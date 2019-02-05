@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "ng serve --watch",
     "build": "ng build --prod",
     "test": "ng test",
     "lint": "ng lint",
@@ -24,8 +24,13 @@
     "@angular/platform-browser-dynamic": "^6.1.3",
     "@angular/router": "^6.1.3",
     "core-js": "^2.4.1",
+    "ng6-socket-io": "^1.0.3",
+    "ngx-socket-io": "^2.1.1",
     "rxjs": "^6.2.2",
     "rxjs-compat": "^6.0.0-rc.0",
+    "socket.io": "^2.2.0",
+    "socket.io-file-client": "^2.0.2",
+    "text-encoding": "^0.7.0",
     "zone.js": "^0.8.26"
   },
   "devDependencies": {
@@ -35,7 +40,7 @@
     "@angular/language-service": "^6.1.3",
     "@types/jasmine": "~2.8.3",
     "@types/jasminewd2": "~2.0.2",
-    "@types/node": "~6.0.60",
+    "@types/node": "^6.0.118",
     "codelyzer": "^4.0.1",
     "jasmine-core": "~2.8.0",
     "jasmine-spec-reporter": "~4.2.1",

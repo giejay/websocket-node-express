@@ -1,6 +1,7 @@
 <div class="container">
   <div class="header">
     <mat-form-field>
+      <input type="file" ngModel (change)="getFiles($event)" accept="image/*" style="display: none;" #file>
       <input matInput placeholder="Your name here" type="text" [(ngModel)]="sender" [ngModelOptions]="{updateOn: 'blur'}">
     </mat-form-field>
   </div>
@@ -10,7 +11,8 @@
         <div class="badge" [style.backgroundColor]="getSenderColor(msg.sender)">{{ getSenderInitials(msg.sender) }}</div>
         <div class="content" [ngClass]="{'bold': msg.isBroadcast, 'others': !isMine(msg)}">
           <i *ngIf="msg.isBroadcast" class="material-icons">speaker_phone</i>
-          <span>{{ msg.content }}</span>
+          <span *ngIf="msg.type !== 'image'">{{ msg.content }}</span>
+          <img *ngIf="msg.type === 'image'" src="data:image/png;base64,{{msg.content}}"/>
         </div>
       </div>
     </div>
@@ -26,6 +28,10 @@
       <button mat-fab (click)="toggleIsBroadcast()" type="button" [ngClass]="{'disabled': !isBroadcast}">
         <i class="material-icons">speaker_phone</i>
       </button>
+      <button type="button" mat-fab (click)="file.click()">
+      </button>
     </form>
   </div>
+
+
 </div>

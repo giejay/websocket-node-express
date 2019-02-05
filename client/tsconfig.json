@@ -1,6 +1,7 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
     "strictNullChecks": true,
     "outDir": "./dist/out-tsc",
     "sourceMap": true,
