@@ -1,5 +1,6 @@
 import {Component, ViewChild, ElementRef, OnInit, AfterViewInit} from '@angular/core';
 import {WebSocketSubject} from 'rxjs/observable/dom/WebSocketSubject';
+import {NgxGalleryOptions, NgxGalleryImage, NgxGalleryAnimation} from 'ngx-gallery';
 import {Socket} from 'ngx-socket-io';
 import SocketIOFileClient from 'socket.io-file-client';
 
@@ -18,9 +19,12 @@ export class Message {
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
-export class AppComponent implements AfterViewInit {
+export class AppComponent implements AfterViewInit, OnInit {
+  galleryOptions: NgxGalleryOptions[];
+  galleryImages: NgxGalleryImage[];
 
   @ViewChild('viewer') private viewer: ElementRef;
+  @ViewChild('gallery') private gallery: ElementRef;
 
   public serverMessages = new Array<Message>();
 
@@ -67,8 +71,50 @@ export class AppComponent implements AfterViewInit {
     console.log(this.uploader.upload($event.target.files, {}));
   }
 
+  ngOnInit(): void {
+    this.galleryOptions = [
+      {
+        width: '100%',
+        height: '900px',
+        thumbnailsColumns: 4,
+        imageAnimation: NgxGalleryAnimation.Slide,
+        imageAutoPlay: true,
+        imageAutoPlayInterval: 5000
+      },
+      // // max-width 800
+      // {
+      //   breakpoint: 800,
+      //   width: '100%',
+      //   height: '600px',
+      //   imagePercent: 80,
+      //   thumbnailsPercent: 20,
+      //   thumbnailsMargin: 20,
+      //   thumbnailMargin: 20
+      // }
+    ];
+
+    this.galleryImages = [
+      {
+        small: 'assets/photo1.jpg',
+        medium: 'assets/photo1.jpg',
+        big: 'assets/photo1.jpg'
+      },
+      {
+        small: 'assets/photo2.jpg',
+        medium: 'assets/photo2.jpg',
+        big: 'assets/photo2.jpg'
+      },
+      {
+        small: 'assets/photo3.jpg',
+        medium: 'assets/photo3.jpg',
+        big: 'assets/photo3.jpg'
+      }
+    ];
+  }
+
   ngAfterViewInit(): void {
     this.scroll();
+    window.console.log(this.gallery)
   }
 
   public toggleIsBroadcast(): void {

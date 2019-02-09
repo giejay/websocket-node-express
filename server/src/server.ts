@@ -87,6 +87,7 @@ wss.on('connection', (ws: WebSocket) => {
         extWs.isAlive = true;
     });
 
+
     //connection is up, let's add a simple simple event
     ws.on('message', (msg: string) => {
 
@@ -105,7 +106,7 @@ wss.on('connection', (ws: WebSocket) => {
 
             }
 
-            ws.send(createMessage(`You sent -> ${message.content}`, message.isBroadcast));
+            ws.send(createMessage(`You sent 2 -> ${message.content}`, message.isBroadcast));
 
         }, 1000);
 
@@ -138,4 +139,4 @@ server.listen(process.env.PORT || 8999, () => {
 
 imageServer.listen(3000, () => {
     console.log(`Image server started on port ${imageServer.address().port} :)`);
-})
+});

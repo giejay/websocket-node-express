@@ -7,11 +7,13 @@ import {
   MatCheckboxModule,
   MatInputModule,
   MatButtonToggleModule,
-  MatIconModule
+  MatIconModule,
+  MatCardModule
 } from '@angular/material';
 import {SocketIoModule, SocketIoConfig} from 'ngx-socket-io';
 import {AppComponent} from './app.component';
-import {ChatService} from "./chat.service";
+import { NgxGalleryModule } from 'ngx-gallery';
+import { FlexLayoutModule } from '@angular/flex-layout';
 
 const config: SocketIoConfig = {url: 'http://localhost:3000', options: {}};
 
@@ -20,18 +22,20 @@ const config: SocketIoConfig = {url: 'http://localhost:3000', options: {}};
     AppComponent
   ],
   imports: [
+    NgxGalleryModule,
     BrowserModule,
     BrowserAnimationsModule,
     FormsModule,
     MatButtonModule,
     MatButtonToggleModule,
+    MatCardModule,
     MatIconModule,
     MatInputModule,
     MatCheckboxModule,
-    SocketIoModule.forRoot(config)
+    SocketIoModule.forRoot(config),
+    FlexLayoutModule
   ],
-  providers: [ChatService],
+  providers: [],
   bootstrap: [AppComponent]
 })
-export class AppModule {
-}
+export class AppModule { }
