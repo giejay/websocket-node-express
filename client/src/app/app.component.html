@@ -1,65 +1,52 @@
-<div class="container">
-  <!--<ngx-gallery #gallery [options]="galleryOptions" [images]="galleryImages"  ></ngx-gallery>-->
+<!--<div class="container">-->
+<ngx-gallery #gallery [options]="galleryOptions" [images]="galleryImages"  ></ngx-gallery>
 
-  <div class="header">
-    <mat-form-field>
-      <input type="file" ngModel (change)="getFiles($event)" accept="image/*" style="display: none;" #file>
-      <input matInput placeholder="Your name here" type="text" [(ngModel)]="sender" [ngModelOptions]="{updateOn: 'blur'}">
-    </mat-form-field>
+<!--<div class="header">-->
+<!--<mat-form-field>-->
+<!--<input type="file" ngModel (change)="getFiles($event)" accept="image/*" style="display: none;" #file>-->
+<!--<input matInput placeholder="Your name here" type="text" [(ngModel)]="sender" [ngModelOptions]="{updateOn: 'blur'}">-->
+<!--</mat-form-field>-->
+<!--</div>-->
+
+<div class="row" style="padding-right: 20px;" *ngIf="!selectedImage">
+
+  <div class="col-md-3" *ngFor="let image of galleryImages; let i = index">
+    <img class="img-fluid img-thumbnail" style="margin: 10px;" (click)="open(i)" [src]="image.big">
   </div>
-
-  <div class="row" style="padding-right: 20px;">
-
-    <div class="col-md-3">
-    <img class="img-fluid img-thumbnail" style="margin: 10px;" src="https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg">
-    </div>
-    <div class="col-md-3">
-    <img class="img-fluid img-thumbnail" style="margin: 10px;" src="https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg">
-    </div>
-    <div class="col-md-3">
-    <img class="img-fluid img-thumbnail" style="margin: 10px;" src="https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg">
-    </div>
-    <div class="col-md-3">
-    <img class="img-fluid img-thumbnail" style="margin: 10px;" src="https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg">
-    </div>
-    <div class="col-md-3">
-      <img class="img-fluid img-thumbnail" style="margin: 10px;" src="https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg">
-    </div>
-    <div class="col-md-3">
-      <img class="img-fluid img-thumbnail" style="margin: 10px;" src="https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg">
-    </div>
-    <!--<div class="col-md-3">-->
-
-      <!--<div *ngIf="!!sender" #viewer class="body">-->
-        <!--<div class="viewer">-->
-          <!--<div class="message" *ngFor="let msg of serverMessages" [ngClass]="{'bold': msg.isBroadcast, 'others': !isMine(msg)}">-->
-            <!--<div class="badge" [style.backgroundColor]="getSenderColor(msg.sender)">{{ getSenderInitials(msg.sender) }}</div>-->
-            <!--<div class="content" [ngClass]="{'bold': msg.isBroadcast, 'others': !isMine(msg)}">-->
-              <!--<i *ngIf="msg.isBroadcast" class="material-icons">speaker_phone</i>-->
-              <!--<span *ngIf="msg.type !== 'image'">{{ msg.content }}</span>-->
-              <!--<img *ngIf="msg.type === 'image'" src="data:image/png;base64,{{msg.content}}"/>-->
-            <!--</div>-->
-          <!--</div>-->
-        <!--</div>-->
-      <!--</div>-->
-      <!--<div *ngIf="!!sender" class="footer">-->
-        <!--<form (submit)="send()">-->
-          <!--<mat-form-field>-->
-            <!--<input name="clientMessage" matInput placeholder="Write a message" type="text" [(ngModel)]="clientMessage">-->
-          <!--</mat-form-field>-->
-          <!--<button mat-fab type="submit">-->
-            <!--<i class="material-icons">send</i>-->
-          <!--</button>-->
-          <!--<button mat-fab (click)="toggleIsBroadcast()" type="button" [ngClass]="{'disabled': !isBroadcast}">-->
-            <!--<i class="material-icons">speaker_phone</i>-->
-          <!--</button>-->
-          <!--<button type="button" mat-fab (click)="file.click()">-->
-          <!--</button>-->
-        <!--</form>-->
-      <!--</div>-->
-
-    <!--</div>-->
-  </div>
-
-
 </div>
+
+<!--<div class="col-md-3">-->
+
+<!--<div *ngIf="!!sender" #viewer class="body">-->
+<!--<div class="viewer">-->
+<!--<div class="message" *ngFor="let msg of serverMessages" [ngClass]="{'bold': msg.isBroadcast, 'others': !isMine(msg)}">-->
+<!--<div class="badge" [style.backgroundColor]="getSenderColor(msg.sender)">{{ getSenderInitials(msg.sender) }}</div>-->
+<!--<div class="content" [ngClass]="{'bold': msg.isBroadcast, 'others': !isMine(msg)}">-->
+<!--<i *ngIf="msg.isBroadcast" class="material-icons">speaker_phone</i>-->
+<!--<span *ngIf="msg.type !== 'image'">{{ msg.content }}</span>-->
+<!--<img *ngIf="msg.type === 'image'" src="data:image/png;base64,{{msg.content}}"/>-->
+<!--</div>-->
+<!--</div>-->
+<!--</div>-->
+<!--</div>-->
+<!--<div *ngIf="!!sender" class="footer">-->
+<!--<form (submit)="send()">-->
+<!--<mat-form-field>-->
+<!--<input name="clientMessage" matInput placeholder="Write a message" type="text" [(ngModel)]="clientMessage">-->
+<!--</mat-form-field>-->
+<!--<button mat-fab type="submit">-->
+<!--<i class="material-icons">send</i>-->
+<!--</button>-->
+<!--<button mat-fab (click)="toggleIsBroadcast()" type="button" [ngClass]="{'disabled': !isBroadcast}">-->
+<!--<i class="material-icons">speaker_phone</i>-->
+<!--</button>-->
+<!--<button type="button" mat-fab (click)="file.click()">-->
+<!--</button>-->
+<!--</form>-->
+<!--</div>-->
+
+<!--</div>-->
+<!--</div>-->
+
+
+<!--</div>-->

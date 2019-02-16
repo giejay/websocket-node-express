@@ -1,8 +1,9 @@
 import {Component, ViewChild, ElementRef, OnInit, AfterViewInit} from '@angular/core';
 import {WebSocketSubject} from 'rxjs/observable/dom/WebSocketSubject';
-import {NgxGalleryOptions, NgxGalleryImage, NgxGalleryAnimation} from 'ngx-gallery';
+import {NgxGalleryOptions, NgxGalleryImage, NgxGalleryAnimation, NgxGalleryComponent} from 'ngx-gallery';
 import {Socket} from 'ngx-socket-io';
 import SocketIOFileClient from 'socket.io-file-client';
+import {IEvent, Lightbox, LIGHTBOX_EVENT, LightboxEvent} from "ngx-lightbox";
 
 export class Message {
   constructor(
@@ -21,10 +22,12 @@ export class Message {
 })
 export class AppComponent implements AfterViewInit, OnInit {
   galleryOptions: NgxGalleryOptions[];
-  galleryImages: NgxGalleryImage[];
+  galleryImages: NgxGalleryImage[] = [];
+
+  public selectedImage: string;
 
   @ViewChild('viewer') private viewer: ElementRef;
-  @ViewChild('gallery') private gallery: ElementRef;
+  @ViewChild('gallery') private gallery: NgxGalleryComponent;
 
   public serverMessages = new Array<Message>();
 
@@ -35,7 +38,7 @@ export class AppComponent implements AfterViewInit, OnInit {
   private socket$: WebSocketSubject<Message>;
   private uploader: SocketIOFileClient;
 
-  constructor(private imageSocket: Socket) {
+  constructor(private imageSocket: Socket, private _lightbox: Lightbox, private _lightboxEvent: LightboxEvent) {
     this.socket$ = new WebSocketSubject('ws://localhost:8999');
     this.uploader = new SocketIOFileClient(imageSocket);
     this.socket$
@@ -45,23 +48,23 @@ export class AppComponent implements AfterViewInit, OnInit {
         () => console.warn('Completed!')
       );
 
-    imageSocket.on('image', (image)=> {
+    imageSocket.on('image', (image) => {
       this.serverMessages.push(new Message('someone', image, false, 'image'));
     });
 
-    this.uploader.on('start', function(fileInfo) {
+    this.uploader.on('start', function (fileInfo) {
       console.log('Start uploading', fileInfo);
     });
-    this.uploader.on('stream', function(fileInfo) {
+    this.uploader.on('stream', function (fileInfo) {
       console.log('Streaming... sent ' + fileInfo.sent + ' bytes.');
     });
-    this.uploader.on('complete', function(fileInfo) {
+    this.uploader.on('complete', function (fileInfo) {
       console.log('Upload Complete', fileInfo);
     });
-    this.uploader.on('error', function(err) {
+    this.uploader.on('error', function (err) {
       console.log('Error!', err);
     });
-    this.uploader.on('abort', function(fileInfo) {
+    this.uploader.on('abort', function (fileInfo) {
       console.log('Aborted: ', fileInfo);
     });
   }
@@ -74,8 +77,8 @@ export class AppComponent implements AfterViewInit, OnInit {
   ngOnInit(): void {
     this.galleryOptions = [
       {
-        width: '100%',
-        height: '900px',
+        width: '1000px',
+        height: '800px',
         thumbnailsColumns: 4,
         imageAnimation: NgxGalleryAnimation.Slide,
         imageAutoPlay: true,
@@ -93,24 +96,40 @@ export class AppComponent implements AfterViewInit, OnInit {
       // }
     ];
 
-    this.galleryImages = [
-      {
-        small: 'assets/photo1.jpg',
-        medium: 'assets/photo1.jpg',
-        big: 'assets/photo1.jpg'
-      },
-      {
-        small: 'assets/photo2.jpg',
-        medium: 'assets/photo2.jpg',
-        big: 'assets/photo2.jpg'
-      },
-      {
-        small: 'assets/photo3.jpg',
-        medium: 'assets/photo3.jpg',
-        big: 'assets/photo3.jpg'
-      }
-    ];
+    this.galleryOptions = [{
+      image: false,
+      thumbnails: false,
+      width: '0px',
+      height: '0px'
+    }];
+
+    for (let i = 0; i < 10; i++) {
+      this.galleryImages.push(
+        {
+          small: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg',
+          medium: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg',
+          big: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg'
+        },
+        {
+          small: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ',
+          medium: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ',
+          big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ'
+        },
+        {
+          small: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp',
+          medium: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp',
+          big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp'
+        });
+    }
   }
+
+  open(index: number): void {
+    this.gallery.openPreview(index);
+    setInterval(() => {
+      this.gallery.openPreview(index++);
+    }, 1000);
+  }
+
 
   ngAfterViewInit(): void {
     this.scroll();
