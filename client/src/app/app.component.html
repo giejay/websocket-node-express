@@ -1,19 +1,24 @@
-<!--<div class="container">-->
-<ngx-gallery #gallery [options]="galleryOptions" [images]="galleryImages"  ></ngx-gallery>
+<div class="container" style="padding-right: 50px;">
+  <!--<span style="height: 100px; text-align='center'"  (click)="file.click()">Upload!</span>-->
+<ngx-gallery #gallery [options]="galleryOptions" [images]="galleryImages" (previewOpen)="previewOpened()" (previewClose)="previewClosed()" (previewChange)="previewChange($event)"></ngx-gallery>
 
 <!--<div class="header">-->
 <!--<mat-form-field>-->
-<!--<input type="file" ngModel (change)="getFiles($event)" accept="image/*" style="display: none;" #file>-->
+<input type="file" ngModel (change)="getFiles($event)" accept="image/*" style="display: none;" #file>
 <!--<input matInput placeholder="Your name here" type="text" [(ngModel)]="sender" [ngModelOptions]="{updateOn: 'blur'}">-->
 <!--</mat-form-field>-->
 <!--</div>-->
 
-<div class="row" style="padding-right: 20px;" *ngIf="!selectedImage">
-
-  <div class="col-md-3" *ngFor="let image of galleryImages; let i = index">
-    <img class="img-fluid img-thumbnail" style="margin: 10px;" (click)="open(i)" [src]="image.big">
+<div class="row" style="padding-right: 20px;">
+  <div class="col-md-3 content">
+    <img class="img-fluid rounded mx-auto d-block" (click)="file.click()" style="height: 300px;" src="https://image.flaticon.com/icons/png/512/3/3901.png">
+  </div>
+  <div class="col-md-3 content" *ngFor="let image of galleryImages; let i = index">
+    <img class="img-fluid img-rounded mx-auto d-block" style="max-height: 300px; " (click)="open(i)" [src]="image.big">
   </div>
 </div>
+</div>
+
 
 <!--<div class="col-md-3">-->
 

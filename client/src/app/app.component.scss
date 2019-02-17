@@ -7,6 +7,12 @@
   flex-flow: column;
 }
 
+.content {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .header,
 .footer {
   background-color: #555;

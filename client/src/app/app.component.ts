@@ -1,6 +1,12 @@
 import {Component, ViewChild, ElementRef, OnInit, AfterViewInit} from '@angular/core';
 import {WebSocketSubject} from 'rxjs/observable/dom/WebSocketSubject';
-import {NgxGalleryOptions, NgxGalleryImage, NgxGalleryAnimation, NgxGalleryComponent} from 'ngx-gallery';
+import {
+  NgxGalleryOptions,
+  NgxGalleryImage,
+  NgxGalleryAnimation,
+  NgxGalleryComponent,
+  NgxGalleryOrder
+} from 'ngx-gallery';
 import {Socket} from 'ngx-socket-io';
 import SocketIOFileClient from 'socket.io-file-client';
 import {IEvent, Lightbox, LIGHTBOX_EVENT, LightboxEvent} from "ngx-lightbox";
@@ -28,12 +34,14 @@ export class AppComponent implements AfterViewInit, OnInit {
 
   @ViewChild('viewer') private viewer: ElementRef;
   @ViewChild('gallery') private gallery: NgxGalleryComponent;
+  @ViewChild('file') private file: HTMLInputElement;
 
   public serverMessages = new Array<Message>();
 
   public clientMessage = '';
   public isBroadcast = false;
   public sender = 'GJ2';
+  public interval: number;
 
   private socket$: WebSocketSubject<Message>;
   private uploader: SocketIOFileClient;
@@ -75,31 +83,17 @@ export class AppComponent implements AfterViewInit, OnInit {
   }
 
   ngOnInit(): void {
-    this.galleryOptions = [
-      {
-        width: '1000px',
-        height: '800px',
-        thumbnailsColumns: 4,
-        imageAnimation: NgxGalleryAnimation.Slide,
-        imageAutoPlay: true,
-        imageAutoPlayInterval: 5000
-      },
-      // // max-width 800
-      // {
-      //   breakpoint: 800,
-      //   width: '100%',
-      //   height: '600px',
-      //   imagePercent: 80,
-      //   thumbnailsPercent: 20,
-      //   thumbnailsMargin: 20,
-      //   thumbnailMargin: 20
-      // }
-    ];
 
     this.galleryOptions = [{
       image: false,
       thumbnails: false,
-      width: '0px',
+      previewInfinityMove: true,
+      thumbnailsColumns: 4,
+      thumbnailsRows:5,
+      thumbnailsOrder: NgxGalleryOrder.Row,
+      // fullWidth: true,
+      width: '100%',
+      thumbnailsPercent: 25,
       height: '0px'
     }];
 
@@ -125,11 +119,23 @@ export class AppComponent implements AfterViewInit, OnInit {
 
   open(index: number): void {
     this.gallery.openPreview(index);
-    setInterval(() => {
-      this.gallery.openPreview(index++);
-    }, 1000);
   }
 
+  previewOpened(){
+    this.interval = setInterval(() => {
+      this.gallery.preview.showNext();
+    }, 3000);
+    console.log("preview opened")
+  }
+
+  previewClosed(){
+    clearInterval(this.interval);
+    console.log("preview closed")
+  }
+
+  previewChange(event: {index: number, image: NgxGalleryImage}){
+    console.log(event.image);
+  }
 
   ngAfterViewInit(): void {
     this.scroll();
