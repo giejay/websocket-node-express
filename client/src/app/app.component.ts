@@ -30,11 +30,9 @@ export class AppComponent implements AfterViewInit, OnInit {
   galleryOptions: NgxGalleryOptions[];
   galleryImages: NgxGalleryImage[] = [];
 
-  public selectedImage: string;
-
   @ViewChild('viewer') private viewer: ElementRef;
   @ViewChild('gallery') private gallery: NgxGalleryComponent;
-  @ViewChild('file') private file: HTMLInputElement;
+  @ViewChild('file') private file: ElementRef;
 
   public serverMessages = new Array<Message>();
 
@@ -45,6 +43,7 @@ export class AppComponent implements AfterViewInit, OnInit {
 
   private socket$: WebSocketSubject<Message>;
   private uploader: SocketIOFileClient;
+  private imagesShown: Array<number> = [];
 
   constructor(private imageSocket: Socket, private _lightbox: Lightbox, private _lightboxEvent: LightboxEvent) {
     this.socket$ = new WebSocketSubject('ws://localhost:8999');
@@ -57,7 +56,20 @@ export class AppComponent implements AfterViewInit, OnInit {
       );
 
     imageSocket.on('image', (image) => {
+      console.log('receiving image!');
+      this.galleryImages.push({
+        small: 'data:image/png;base64,' + image,
+        medium: 'data:image/png;base64,' + image,
+        big: 'data:image/png;base64,' + image
+      });
       this.serverMessages.push(new Message('someone', image, false, 'image'));
+      if(this.imagesShown.length === this.galleryImages.length - 1){
+        // all photos have been shown allready, jump to the last!
+        console.log('jumping to last!');
+        clearInterval(this.interval);
+        this.gallery.preview.showAtIndex(this.galleryImages.length - 1);
+        this.slideShow();
+      }
     });
 
     this.uploader.on('start', function (fileInfo) {
@@ -80,6 +92,7 @@ export class AppComponent implements AfterViewInit, OnInit {
 
   getFiles($event): void {
     console.log(this.uploader.upload($event.target.files, {}));
+    delete this.file.nativeElement.value;
   }
 
   ngOnInit(): void {
@@ -97,7 +110,7 @@ export class AppComponent implements AfterViewInit, OnInit {
       height: '0px'
     }];
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 1; i++) {
       this.galleryImages.push(
         {
           small: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg',
@@ -122,10 +135,17 @@ export class AppComponent implements AfterViewInit, OnInit {
   }
 
   previewOpened(){
+    this.slideShow();
+    console.log("preview opened")
+  }
+
+  private slideShow() {
     this.interval = setInterval(() => {
+      if (this.imagesShown.indexOf(this.gallery.preview.index) < 0) {
+        this.imagesShown.push(this.gallery.preview.index);
+      }
       this.gallery.preview.showNext();
     }, 3000);
-    console.log("preview opened")
   }
 
   previewClosed(){

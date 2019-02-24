@@ -15,7 +15,7 @@ import {AppComponent} from './app.component';
 import { NgxGalleryModule } from 'ngx-gallery';
 import { LightboxModule } from 'ngx-lightbox';
 
-const config: SocketIoConfig = {url: 'http://localhost:3000', options: {}};
+const config: SocketIoConfig = {url: 'http://192.168.2.253:3000', options: {}};
 
 @NgModule({
   declarations: [
