@@ -10,6 +10,7 @@ import {
 import {Socket} from 'ngx-socket-io';
 import SocketIOFileClient from 'socket.io-file-client';
 import {IEvent, Lightbox, LIGHTBOX_EVENT, LightboxEvent} from "ngx-lightbox";
+const jo = require('jpeg-autorotate');
 
 export class Message {
   constructor(
@@ -39,7 +40,7 @@ export class AppComponent implements AfterViewInit, OnInit {
   public clientMessage = '';
   public isBroadcast = false;
   public sender = 'GJ2';
-  public interval: number;
+  public interval: any;
 
   private socket$: WebSocketSubject<Message>;
   private uploader: SocketIOFileClient;
@@ -91,7 +92,29 @@ export class AppComponent implements AfterViewInit, OnInit {
 
 
   getFiles($event): void {
-    console.log(this.uploader.upload($event.target.files, {}));
+    console.log('Got the file!')
+    const fileReader = new FileReader();
+    const uploader = this.uploader;
+    fileReader.onloadend = function() {
+      console.log('reading the byte array');
+      jo.rotate( Buffer.from(fileReader.result), {quality: 75}, (error: any, buffer: any, orientation: any, dimensions: any) => {
+        if (error) {
+          // buffer = bitmap;
+          // todo make it smaller over here!!
+          buffer = fileReader.result;
+          console.log('An error occurred when rotating the file: ' + error.message)
+        } else {
+          console.log('Orientation was: ' + orientation)
+          console.log('Height after rotation: ' + dimensions.height)
+          console.log('Width after rotation: ' + dimensions.width)
+          // ...
+          // Do whatever you need with the resulting buffer
+          // ...
+        }
+        console.log(uploader.upload({files: [new File([buffer], 'fileName', {'type': 'image/jpeg'})]}, {}));
+      });
+    };
+    fileReader.readAsArrayBuffer($event.target.files[0]);
     delete this.file.nativeElement.value;
   }
 
@@ -221,4 +244,44 @@ export class AppComponent implements AfterViewInit, OnInit {
   private easeInOutSin(t): number {
     return (1 + Math.sin(Math.PI * t - Math.PI / 2)) / 2;
   }
+
+  private orientation = function(file, callback) {
+    var fileReader = new FileReader();
+    fileReader.onloadend = function() {
+      var scanner = new DataView(fileReader.result);
+      var idx = 0;
+      var value = 1; // Non-rotated is the default
+      if(fileReader.result.length < 2 || scanner.getUint16(idx) != 0xFFD8) {
+        // Not a JPEG
+        if(callback) {
+          callback(value);
+        }
+        return;
+      }
+      idx += 2;
+      var maxBytes = scanner.byteLength;
+      while(idx < maxBytes - 2) {
+        var uint16 = scanner.getUint16(idx);
+        idx += 2;
+        switch(uint16) {
+          case 0xFFE1: // Start of EXIF
+            var exifLength = scanner.getUint16(idx);
+            maxBytes = exifLength - idx;
+            idx += 2;
+            break;
+          case 0x0112: // Orientation tag
+            // Read the value, its 6 bytes further out
+            // See page 102 at the following URL
+            // http://www.kodak.com/global/plugins/acrobat/en/service/digCam/exifStandard2.pdf
+            value = scanner.getUint16(idx + 6, false);
+            maxBytes = 0; // Stop scanning
+            break;
+        }
+      }
+      if(callback) {
+        callback(value);
+      }
+    }
+    fileReader.readAsArrayBuffer(file);
+  };
 }

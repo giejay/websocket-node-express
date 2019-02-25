@@ -47,6 +47,8 @@ io.on('connection', (socket: WebSocket) => {
         buffers.forEach(file => socket.emit('image', fs.readFileSync('data/processed/' + file).toString('base64')));
     });
 
+    let counter = 0;
+
     var uploader = new SocketIOFile(socket, {
         // uploadDir: {			// multiple directories
         // 	music: 'data/music',
@@ -55,11 +57,11 @@ io.on('connection', (socket: WebSocket) => {
         uploadDir: 'data/incoming',							// simple directory
         accepts: ['image/jpeg', 'image/png'],		// chrome and some of browsers checking mp3 as 'audio/mp3', not 'audio/mpeg'
         maxFileSize: 6194304, 						// 4 MB. default is undefined(no limit)
-        chunkSize: 10240,							// default is 10240(1KB)
+        chunkSize: 100240,							// default is 10240(1KB)
         transmissionDelay: 0,						// delay of each transmission, higher value saves more cpu resources, lower upload speed. default is 0(no delay)
         overwrite: true 		,					// overwrite file if exists, default is true.
-        rename: function(filename: string, fileInfo: string){
-            return (new Date().getTime() + Math.floor(Math.random() * 10000000)).toString();
+        rename: () => {
+            return new Date().getTime() + '_' + counter++ + '.jpeg';
         }
     });
     uploader.on('start', (fileInfo: any) => {
