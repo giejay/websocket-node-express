@@ -1,6 +1,10 @@
 import * as express from 'express';
 import * as http from 'http';
 import * as WebSocket from 'ws';
+// @ts-ignore
+import piexif from 'piexifjs'
+import ErrnoException = NodeJS.ErrnoException;
+
 var fs = require('fs');
 const app = express();
 
@@ -10,11 +14,13 @@ const server = http.createServer(app);
 const imageServer = http.createServer(app);
 
 //initialize the WebSocket server instance
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({server});
 
 // For the images
 const io = require('socket.io')(imageServer);
 const SocketIOFile = require('socket.io-file');
+const jo = require('jpeg-autorotate');
+const options = {quality: 65};
 
 interface ExtWebSocket extends WebSocket {
     isAlive: boolean;
@@ -29,23 +35,32 @@ export class Message {
         public content: string,
         public isBroadcast = false,
         public sender: string
-    ) { }
+    ) {
+    }
 }
 
 io.on('connection', (socket: WebSocket) => {
     console.log('Socket connected.');
+
+    fs.readdir('data/processed', (error: ErrnoException, buffers: Array<string>) => {
+        console.log('Sending images: ', buffers);
+        buffers.forEach(file => socket.emit('image', fs.readFileSync('data/processed/' + file).toString('base64')));
+    });
 
     var uploader = new SocketIOFile(socket, {
         // uploadDir: {			// multiple directories
         // 	music: 'data/music',
         // 	document: 'data/document'
         // },
-        uploadDir: 'data',							// simple directory
+        uploadDir: 'data/incoming',							// simple directory
         accepts: ['image/jpeg', 'image/png'],		// chrome and some of browsers checking mp3 as 'audio/mp3', not 'audio/mpeg'
-        maxFileSize: 4194304, 						// 4 MB. default is undefined(no limit)
+        maxFileSize: 6194304, 						// 4 MB. default is undefined(no limit)
         chunkSize: 10240,							// default is 10240(1KB)
         transmissionDelay: 0,						// delay of each transmission, higher value saves more cpu resources, lower upload speed. default is 0(no delay)
-        overwrite: true 							// overwrite file if exists, default is true.
+        overwrite: true 		,					// overwrite file if exists, default is true.
+        rename: function(filename: string, fileInfo: string){
+            return (new Date().getTime() + Math.floor(Math.random() * 10000000)).toString();
+        }
     });
     uploader.on('start', (fileInfo: any) => {
         console.log('Start uploading');
@@ -56,10 +71,10 @@ io.on('connection', (socket: WebSocket) => {
     });
     uploader.on('complete', (fileInfo: any) => {
         console.log('Upload Complete.');
-        console.log(fileInfo);
-        console.log(io.clients());
 
-        io.clients().emit('image', base64_encode(fileInfo.name))
+        base64_encode(fileInfo.name).then((base64Image: string) => {
+            io.clients().emit('image', base64Image)
+        })
     });
     uploader.on('error', (err: any) => {
         console.log('Error!', err);
@@ -70,11 +85,29 @@ io.on('connection', (socket: WebSocket) => {
 });
 
 // function to encode file data to base64 encoded string
-function base64_encode(file: string) {
+function base64_encode(file: string): Promise<string> {
     // read binary data
-    var bitmap = fs.readFileSync('data/' + file);
-    // convert binary data to base64 encoded string
-    return new Buffer(bitmap).toString('base64');
+    const bitmap = fs.readFileSync('data/incoming/' + file);
+    // const withoutThumb = deleteThumbnailFromExif(bitmap);
+
+    return new Promise(function (resolve, reject) {
+        jo.rotate(bitmap, options, function (error: any, buffer: Buffer, orientation: any, dimensions: any) {
+            if (error) {
+                buffer = bitmap;
+                // todo make it smaller over here!!
+                console.log('An error occurred when rotating the file: ' + error.message)
+            } else {
+                console.log('Orientation was: ' + orientation)
+                console.log('Height after rotation: ' + dimensions.height)
+                console.log('Width after rotation: ' + dimensions.width)
+                // ...
+                // Do whatever you need with the resulting buffer
+                // ...
+            }
+            fs.writeFileSync('data/processed/' + file, buffer);
+            resolve(buffer.toString('base64'));
+        });
+    });
 }
 
 wss.on('connection', (ws: WebSocket) => {
@@ -86,7 +119,6 @@ wss.on('connection', (ws: WebSocket) => {
     ws.on('pong', () => {
         extWs.isAlive = true;
     });
-
 
     //connection is up, let's add a simple simple event
     ws.on('message', (msg: string) => {
@@ -119,6 +151,16 @@ wss.on('connection', (ws: WebSocket) => {
         console.warn(`Client disconnected - reason: ${err}`);
     })
 });
+
+function deleteThumbnailFromExif(imageBuffer: Buffer) {
+    const imageString = imageBuffer.toString('binary')
+    const exifObj = piexif.load(imageString)
+    delete exifObj.thumbnail
+    delete exifObj['1st']
+    const exifBytes = piexif.dump(exifObj)
+    const newImageString = piexif.insert(exifBytes, imageString)
+    return Buffer.from(newImageString, 'binary')
+}
 
 setInterval(() => {
     wss.clients.forEach((ws: WebSocket) => {
