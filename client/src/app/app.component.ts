@@ -3,14 +3,12 @@ import {WebSocketSubject} from 'rxjs/observable/dom/WebSocketSubject';
 import {
   NgxGalleryOptions,
   NgxGalleryImage,
-  NgxGalleryAnimation,
   NgxGalleryComponent,
   NgxGalleryOrder
 } from 'ngx-gallery';
 import {Socket} from 'ngx-socket-io';
 import SocketIOFileClient from 'socket.io-file-client';
-import {IEvent, Lightbox, LIGHTBOX_EVENT, LightboxEvent} from "ngx-lightbox";
-const jo = require('jpeg-autorotate');
+// const jo = require('jpeg-autorotate');
 
 export class Message {
   constructor(
@@ -35,7 +33,7 @@ export class AppComponent implements AfterViewInit, OnInit {
   @ViewChild('gallery') private gallery: NgxGalleryComponent;
   @ViewChild('file') private file: ElementRef;
 
-  public serverMessages = new Array<Message>();
+  public serverMessages: Message[] = [];
 
   public clientMessage = '';
   public isBroadcast = false;
@@ -45,8 +43,11 @@ export class AppComponent implements AfterViewInit, OnInit {
   private socket$: WebSocketSubject<Message>;
   private uploader: SocketIOFileClient;
   private imagesShown: Array<number> = [];
+  public isUploading: boolean;
+  public uploadingPercentage: number = 60;
+  public fileSize: number;
 
-  constructor(private imageSocket: Socket, private _lightbox: Lightbox, private _lightboxEvent: LightboxEvent) {
+  constructor(private imageSocket: Socket) {
     this.socket$ = new WebSocketSubject('ws://localhost:8999');
     this.uploader = new SocketIOFileClient(imageSocket);
     this.socket$
@@ -73,48 +74,57 @@ export class AppComponent implements AfterViewInit, OnInit {
       }
     });
 
-    this.uploader.on('start', function (fileInfo) {
+    this.uploader.on('start', (fileInfo) => {
       console.log('Start uploading', fileInfo);
+      this.isUploading = true;
+      this.uploadingPercentage = 0;
+      this.fileSize = fileInfo.size;
     });
-    this.uploader.on('stream', function (fileInfo) {
+    this.uploader.on('stream', (fileInfo) => {
       console.log('Streaming... sent ' + fileInfo.sent + ' bytes.');
+      this.uploadingPercentage = (fileInfo.sent / this.fileSize) * 100;
+      console.log(this.uploadingPercentage);
     });
-    this.uploader.on('complete', function (fileInfo) {
+    this.uploader.on('complete', (fileInfo) => {
       console.log('Upload Complete', fileInfo);
+      this.isUploading = false;
     });
-    this.uploader.on('error', function (err) {
+    this.uploader.on('error', (err) => {
       console.log('Error!', err);
+      this.isUploading = false;
     });
-    this.uploader.on('abort', function (fileInfo) {
+    this.uploader.on('abort', (fileInfo) => {
       console.log('Aborted: ', fileInfo);
+      this.isUploading = false;
     });
   }
 
-
   getFiles($event): void {
     console.log('Got the file!')
-    const fileReader = new FileReader();
-    const uploader = this.uploader;
-    fileReader.onloadend = function() {
-      console.log('reading the byte array');
-      jo.rotate( Buffer.from(fileReader.result), {quality: 75}, (error: any, buffer: any, orientation: any, dimensions: any) => {
-        if (error) {
-          // buffer = bitmap;
-          // todo make it smaller over here!!
-          buffer = fileReader.result;
-          console.log('An error occurred when rotating the file: ' + error.message)
-        } else {
-          console.log('Orientation was: ' + orientation)
-          console.log('Height after rotation: ' + dimensions.height)
-          console.log('Width after rotation: ' + dimensions.width)
-          // ...
-          // Do whatever you need with the resulting buffer
-          // ...
-        }
-        console.log(uploader.upload({files: [new File([buffer], 'fileName', {'type': 'image/jpeg'})]}, {}));
-      });
-    };
-    fileReader.readAsArrayBuffer($event.target.files[0]);
+    // const fileReader = new FileReader();
+    // const uploader = this.uploader;
+    // fileReader.onloadend = function() {
+    //   console.log('reading the byte array');
+    //   jo.rotate( Buffer.from(fileReader.result), {quality: 75}, (error: any, buffer: any, orientation: any, dimensions: any) => {
+    //     if (error) {
+    //       // buffer = bitmap;
+    //       // todo make it smaller over here!!
+    //       buffer = fileReader.result;
+    //       console.log('An error occurred when rotating the file: ' + error.message)
+    //     } else {
+    //       console.log('Orientation was: ' + orientation)
+    //       console.log('Height after rotation: ' + dimensions.height)
+    //       console.log('Width after rotation: ' + dimensions.width)
+    //       // ...
+    //       // Do whatever you need with the resulting buffer
+    //       // ...
+    //     }
+    //     uploader.upload({files: [new File([buffer], 'fileName', {'type': 'image/jpeg'})]}, {});
+    //   });
+    // };
+    // fileReader.readAsArrayBuffer($event.target.files[0]);
+
+    this.uploader.upload($event.target.files, {});
     delete this.file.nativeElement.value;
   }
 
