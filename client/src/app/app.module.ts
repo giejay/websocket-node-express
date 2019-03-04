@@ -15,7 +15,7 @@ import {AppComponent} from './app.component';
 import { NgxGalleryModule } from 'ngx-gallery';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 
-const config: SocketIoConfig = {url: 'http://192.168.2.76:3000', options: {}};
+const config: SocketIoConfig = {url: 'http://localhost:3000', options: {}};
 
 @NgModule({
   declarations: [

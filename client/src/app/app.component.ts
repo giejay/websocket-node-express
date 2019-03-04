@@ -140,7 +140,16 @@ export class AppComponent implements AfterViewInit, OnInit {
       // fullWidth: true,
       width: '100%',
       thumbnailsPercent: 25,
-      height: '0px'
+      height: '0px',
+      imageActions: [
+        {
+          icon: 'fa fa-play-circle',
+          titleText: 'Play',
+          onClick: () => {
+            console.log('clicked!!')
+          }
+        }
+      ]
     }];
 
     for (let i = 0; i < 1; i++) {
