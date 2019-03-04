@@ -141,12 +141,13 @@ export class AppComponent implements AfterViewInit, OnInit {
       width: '100%',
       thumbnailsPercent: 25,
       height: '0px',
-      imageActions: [
+      actions: [
         {
           icon: 'fa fa-play-circle',
           titleText: 'Play',
           onClick: () => {
-            console.log('clicked!!')
+            // todo if playing, dont do it again!
+            this.slideShow();
           }
         }
       ]
@@ -174,11 +175,6 @@ export class AppComponent implements AfterViewInit, OnInit {
 
   open(index: number): void {
     this.gallery.openPreview(index);
-  }
-
-  previewOpened(){
-    this.slideShow();
-    console.log("preview opened")
   }
 
   private slideShow() {
