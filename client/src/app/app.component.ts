@@ -1,46 +1,21 @@
-import {Component, ViewChild, ElementRef, OnInit, AfterViewInit} from '@angular/core';
-import {WebSocketSubject} from 'rxjs/observable/dom/WebSocketSubject';
-import {
-  NgxGalleryOptions,
-  NgxGalleryImage,
-  NgxGalleryComponent,
-  NgxGalleryOrder
-} from 'ngx-gallery';
+import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
+import {NgxGalleryComponent, NgxGalleryImage, NgxGalleryOptions, NgxGalleryOrder} from 'ngx-gallery';
 import {Socket} from 'ngx-socket-io';
 import SocketIOFileClient from 'socket.io-file-client';
-// const jo = require('jpeg-autorotate');
-
-export class Message {
-  constructor(
-    public sender: string,
-    public content: string,
-    public isBroadcast = false,
-    public type: string = 'text'
-  ) {
-  }
-}
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
-export class AppComponent implements AfterViewInit, OnInit {
+export class AppComponent implements OnInit {
   galleryOptions: NgxGalleryOptions[];
   galleryImages: NgxGalleryImage[] = [];
 
-  @ViewChild('viewer') private viewer: ElementRef;
   @ViewChild('gallery') private gallery: NgxGalleryComponent;
   @ViewChild('file') private file: ElementRef;
 
-  public serverMessages: Message[] = [];
-
-  public clientMessage = '';
-  public isBroadcast = false;
-  public sender = 'GJ2';
-  public interval: any;
-
-  private socket$: WebSocketSubject<Message>;
+  public slideShowInterval: any;
   private uploader: SocketIOFileClient;
   private imagesShown: Array<number> = [];
   public isUploading: boolean;
@@ -48,15 +23,9 @@ export class AppComponent implements AfterViewInit, OnInit {
   public fileSize: number;
 
   constructor(private imageSocket: Socket) {
-    this.socket$ = new WebSocketSubject('ws://localhost:8999');
     this.uploader = new SocketIOFileClient(imageSocket);
-    this.socket$
-      .subscribe(
-        (message) => this.serverMessages.push(message) && this.scroll(),
-        (err) => console.error(err),
-        () => console.warn('Completed!')
-      );
 
+    // receiving part
     imageSocket.on('image', (image) => {
       console.log('receiving image!');
       this.galleryImages.push({
@@ -64,16 +33,17 @@ export class AppComponent implements AfterViewInit, OnInit {
         medium: 'data:image/png;base64,' + image,
         big: 'data:image/png;base64,' + image
       });
-      this.serverMessages.push(new Message('someone', image, false, 'image'));
       if(this.imagesShown.length === this.galleryImages.length - 1){
         // all photos have been shown allready, jump to the last!
         console.log('jumping to last!');
-        clearInterval(this.interval);
+        // reset it so it won't play the last image for example for 1 second.
+        clearInterval(this.slideShowInterval);
         this.gallery.preview.showAtIndex(this.galleryImages.length - 1);
         this.slideShow();
       }
     });
 
+    // sending part
     this.uploader.on('start', (fileInfo) => {
       console.log('Start uploading', fileInfo);
       this.isUploading = true;
@@ -100,36 +70,13 @@ export class AppComponent implements AfterViewInit, OnInit {
   }
 
   getFiles($event): void {
-    console.log('Got the file!')
-    // const fileReader = new FileReader();
-    // const uploader = this.uploader;
-    // fileReader.onloadend = function() {
-    //   console.log('reading the byte array');
-    //   jo.rotate( Buffer.from(fileReader.result), {quality: 75}, (error: any, buffer: any, orientation: any, dimensions: any) => {
-    //     if (error) {
-    //       // buffer = bitmap;
-    //       // todo make it smaller over here!!
-    //       buffer = fileReader.result;
-    //       console.log('An error occurred when rotating the file: ' + error.message)
-    //     } else {
-    //       console.log('Orientation was: ' + orientation)
-    //       console.log('Height after rotation: ' + dimensions.height)
-    //       console.log('Width after rotation: ' + dimensions.width)
-    //       // ...
-    //       // Do whatever you need with the resulting buffer
-    //       // ...
-    //     }
-    //     uploader.upload({files: [new File([buffer], 'fileName', {'type': 'image/jpeg'})]}, {});
-    //   });
-    // };
-    // fileReader.readAsArrayBuffer($event.target.files[0]);
-
+    console.log('Uploading file');
     this.uploader.upload($event.target.files, {});
+    // clear input
     delete this.file.nativeElement.value;
   }
 
   ngOnInit(): void {
-
     this.galleryOptions = [{
       image: false,
       thumbnails: false,
@@ -177,17 +124,9 @@ export class AppComponent implements AfterViewInit, OnInit {
     this.gallery.openPreview(index);
   }
 
-  private slideShow() {
-    this.interval = setInterval(() => {
-      if (this.imagesShown.indexOf(this.gallery.preview.index) < 0) {
-        this.imagesShown.push(this.gallery.preview.index);
-      }
-      this.gallery.preview.showNext();
-    }, 3000);
-  }
-
   previewClosed(){
-    clearInterval(this.interval);
+    clearInterval(this.slideShowInterval);
+    delete this.slideShowInterval;
     console.log("preview closed")
   }
 
@@ -195,108 +134,13 @@ export class AppComponent implements AfterViewInit, OnInit {
     console.log(event.image);
   }
 
-  ngAfterViewInit(): void {
-    this.scroll();
-    window.console.log(this.gallery)
-  }
-
-  public toggleIsBroadcast(): void {
-    this.isBroadcast = !this.isBroadcast;
-  }
-
-  public send(): void {
-    const message = new Message(this.sender, this.clientMessage, this.isBroadcast);
-
-    this.serverMessages.push(message);
-    this.socket$.next(message);
-    this.clientMessage = '';
-    this.scroll();
-  }
-
-  public isMine(message: Message): boolean {
-    return message && message.sender === this.sender;
-  }
-
-  public getSenderInitials(sender: string): string {
-    return sender && sender.substring(0, 2).toLocaleUpperCase();
-  }
-
-  public getSenderColor(sender: string): string {
-    const alpha = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZ';
-    const initials = this.getSenderInitials(sender);
-    const value = Math.ceil((alpha.indexOf(initials[0]) + alpha.indexOf(initials[1])) * 255 * 255 * 255 / 70);
-    return '#' + value.toString(16).padEnd(6, '0');
-  }
-
-  private scroll(): void {
-    setTimeout(() => {
-      this.scrollToBottom();
-    }, 100);
-  }
-
-  private getDiff(): number {
-    if (!this.viewer) {
-      return -1;
-    }
-
-    const nativeElement = this.viewer.nativeElement;
-    return nativeElement.scrollHeight - (nativeElement.scrollTop + nativeElement.clientHeight);
-  }
-
-  private scrollToBottom(t = 1, b = 0): void {
-    if (b < 1) {
-      b = this.getDiff();
-    }
-    if (b > 0 && t <= 120) {
-      setTimeout(() => {
-        const diff = this.easeInOutSin(t / 120) * this.getDiff();
-        this.viewer.nativeElement.scrollTop += diff;
-        this.scrollToBottom(++t, b);
-      }, 1 / 60);
-    }
-  }
-
-  private easeInOutSin(t): number {
-    return (1 + Math.sin(Math.PI * t - Math.PI / 2)) / 2;
-  }
-
-  private orientation = function(file, callback) {
-    var fileReader = new FileReader();
-    fileReader.onloadend = function() {
-      var scanner = new DataView(fileReader.result);
-      var idx = 0;
-      var value = 1; // Non-rotated is the default
-      if(fileReader.result.length < 2 || scanner.getUint16(idx) != 0xFFD8) {
-        // Not a JPEG
-        if(callback) {
-          callback(value);
-        }
-        return;
+  private slideShow() {
+    this.slideShowInterval = setInterval(() => {
+      if (this.imagesShown.indexOf(this.gallery.preview.index) < 0) {
+        this.imagesShown.push(this.gallery.preview.index);
       }
-      idx += 2;
-      var maxBytes = scanner.byteLength;
-      while(idx < maxBytes - 2) {
-        var uint16 = scanner.getUint16(idx);
-        idx += 2;
-        switch(uint16) {
-          case 0xFFE1: // Start of EXIF
-            var exifLength = scanner.getUint16(idx);
-            maxBytes = exifLength - idx;
-            idx += 2;
-            break;
-          case 0x0112: // Orientation tag
-            // Read the value, its 6 bytes further out
-            // See page 102 at the following URL
-            // http://www.kodak.com/global/plugins/acrobat/en/service/digCam/exifStandard2.pdf
-            value = scanner.getUint16(idx + 6, false);
-            maxBytes = 0; // Stop scanning
-            break;
-        }
-      }
-      if(callback) {
-        callback(value);
-      }
-    }
-    fileReader.readAsArrayBuffer(file);
-  };
+      this.gallery.preview.showNext();
+    }, 3000);
+  }
+
 }

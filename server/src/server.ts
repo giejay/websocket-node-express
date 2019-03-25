@@ -8,16 +8,9 @@ import ErrnoException = NodeJS.ErrnoException;
 var fs = require('fs');
 const app = express();
 
-//initialize a simple http server
-const server = http.createServer(app);
-
+// Websocket server
 const imageServer = http.createServer(app);
-
-//initialize the WebSocket server instance
-const wss = new WebSocket.Server({server});
-
-// For the images
-const io = require('socket.io')(imageServer);
+const ws = require('socket.io')(imageServer);
 const SocketIOFile = require('socket.io-file');
 const jo = require('jpeg-autorotate');
 const options = {quality: 65};
@@ -26,30 +19,27 @@ interface ExtWebSocket extends WebSocket {
     isAlive: boolean;
 }
 
-function createMessage(content: string, isBroadcast = false, sender = 'NS'): string {
-    return JSON.stringify(new Message(content, isBroadcast, sender));
-}
+ws.on('connection', (socket: WebSocket) => {
 
-export class Message {
-    constructor(
-        public content: string,
-        public isBroadcast = false,
-        public sender: string
-    ) {
-    }
-}
+    const extWs = ws as ExtWebSocket;
 
-io.on('connection', (socket: WebSocket) => {
+    extWs.isAlive = true;
+
+    ws.on('pong', () => {
+        extWs.isAlive = true;
+    });
+
     console.log('Socket connected.');
 
-    fs.readdir('data/processed', (error: ErrnoException, buffers: Array<string>) => {
-        console.log('Sending images: ', buffers);
-        buffers.forEach(file => socket.emit('image', fs.readFileSync('data/processed/' + file).toString('base64')));
+    // read all current images on disk and sent them to client
+    fs.readdir('data/processed', (error: ErrnoException, images: Array<string>) => {
+        console.log('Sending images: ', images);
+        images.forEach(file => socket.emit('image', fs.readFileSync('data/processed/' + file).toString('base64')));
     });
 
     let counter = 0;
 
-    var uploader = new SocketIOFile(socket, {
+    const uploader = new SocketIOFile(socket, {
         // uploadDir: {			// multiple directories
         // 	music: 'data/music',
         // 	document: 'data/document'
@@ -75,7 +65,7 @@ io.on('connection', (socket: WebSocket) => {
         console.log('Upload Complete.');
 
         base64_encode(fileInfo.name).then((base64Image: string) => {
-            io.clients().emit('image', base64Image)
+            ws.clients().emit('image', base64Image)
         })
     });
     uploader.on('error', (err: any) => {
@@ -92,16 +82,17 @@ function base64_encode(file: string): Promise<string> {
     const bitmap = fs.readFileSync('data/incoming/' + file);
     // const withoutThumb = deleteThumbnailFromExif(bitmap);
 
-    return new Promise(function (resolve, reject) {
+    return new Promise(function (resolve) {
         jo.rotate(bitmap, options, function (error: any, buffer: Buffer, orientation: any, dimensions: any) {
             if (error) {
+                // already proper orientation?
                 buffer = bitmap;
                 // todo make it smaller over here!!
                 console.log('An error occurred when rotating the file: ' + error.message)
             } else {
-                console.log('Orientation was: ' + orientation)
-                console.log('Height after rotation: ' + dimensions.height)
-                console.log('Width after rotation: ' + dimensions.width)
+                console.log('Orientation was: ' + orientation);
+                console.log('Height after rotation: ' + dimensions.height);
+                console.log('Width after rotation: ' + dimensions.width);
                 // ...
                 // Do whatever you need with the resulting buffer
                 // ...
@@ -112,75 +103,30 @@ function base64_encode(file: string): Promise<string> {
     });
 }
 
-wss.on('connection', (ws: WebSocket) => {
-
-    const extWs = ws as ExtWebSocket;
-
-    extWs.isAlive = true;
-
-    ws.on('pong', () => {
-        extWs.isAlive = true;
-    });
-
-    //connection is up, let's add a simple simple event
-    ws.on('message', (msg: string) => {
-
-        const message = JSON.parse(msg) as Message;
-
-        setTimeout(() => {
-            if (message.isBroadcast) {
-
-                //send back the message to the other clients
-                wss.clients
-                    .forEach(client => {
-                        if (client != ws) {
-                            client.send(createMessage(message.content, true, message.sender));
-                        }
-                    });
-
-            }
-
-            ws.send(createMessage(`You sent 2 -> ${message.content}`, message.isBroadcast));
-
-        }, 1000);
-
-    });
-
-    //send immediatly a feedback to the incoming connection    
-    ws.send(createMessage('Hi there, I am a WebSocket server'));
-
-    ws.on('error', (err) => {
-        console.warn(`Client disconnected - reason: ${err}`);
-    })
-});
 
 function deleteThumbnailFromExif(imageBuffer: Buffer) {
-    const imageString = imageBuffer.toString('binary')
-    const exifObj = piexif.load(imageString)
-    delete exifObj.thumbnail
-    delete exifObj['1st']
-    const exifBytes = piexif.dump(exifObj)
-    const newImageString = piexif.insert(exifBytes, imageString)
+    const imageString = imageBuffer.toString('binary');
+    const exifObj = piexif.load(imageString);
+    delete exifObj.thumbnail;
+    delete exifObj['1st'];
+    const exifBytes = piexif.dump(exifObj);
+    const newImageString = piexif.insert(exifBytes, imageString);
     return Buffer.from(newImageString, 'binary')
 }
 
-setInterval(() => {
-    wss.clients.forEach((ws: WebSocket) => {
-
-        const extWs = ws as ExtWebSocket;
-
-        if (!extWs.isAlive) return ws.terminate();
-
-        extWs.isAlive = false;
-        ws.ping(null, undefined);
-    });
-}, 10000);
+// setInterval(() => {
+//     Object.keys(ws.clients().sockets).map(key => ws.clients().sockets[key]).forEach((ws: WebSocket) => {
+//
+//         const extWs = ws as ExtWebSocket;
+//
+//         if (!extWs.isAlive) return ws.terminate();
+//
+//         extWs.isAlive = false;
+//         ws.ping(null, undefined);
+//     });
+// }, 10000);
 
 //start our server
-server.listen(process.env.PORT || 8999, () => {
-    console.log(`Server started on port ${server.address().port} :)`);
-});
-
 imageServer.listen(3000, () => {
     console.log(`Image server started on port ${imageServer.address().port} :)`);
 });
