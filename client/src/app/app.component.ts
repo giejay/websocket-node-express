@@ -10,7 +10,7 @@ import SocketIOFileClient from 'socket.io-file-client';
 })
 export class AppComponent implements OnInit {
   galleryOptions: NgxGalleryOptions[];
-  galleryImages: NgxGalleryImage[] = [];
+  galleryImages: { [imageName: string]: NgxGalleryImage } = {};
 
   @ViewChild('gallery') private gallery: NgxGalleryComponent;
   @ViewChild('file') private file: ElementRef;
@@ -27,18 +27,23 @@ export class AppComponent implements OnInit {
 
     // receiving part
     imageSocket.on('image', (image) => {
-      console.log('receiving image!');
-      this.galleryImages.push({
-        small: 'data:image/png;base64,' + image,
-        medium: 'data:image/png;base64,' + image,
-        big: 'data:image/png;base64,' + image
-      });
-      if(this.imagesShown.length === this.galleryImages.length - 1){
+      console.log('receiving image!', image);
+      if (this.galleryImages[image.name]) {
+        console.log('Allready processed the image: ' + image.name);
+        return;
+      }
+      this.galleryImages[image.name] = {
+        // small: 'data:image/png;base64,' + image.content,
+        // medium: 'data:image/png;base64,' + image.content,
+        big: 'data:image/png;base64,' + image.content
+      };
+      let imageCount = Object.keys(this.galleryImages).length;
+      if (this.imagesShown.length === imageCount - 1) {
         // all photos have been shown allready, jump to the last!
         console.log('jumping to last!');
         // reset it so it won't play the last image for example for 1 second.
         clearInterval(this.slideShowInterval);
-        this.gallery.preview.showAtIndex(this.galleryImages.length - 1);
+        this.gallery.preview.showAtIndex(imageCount - 1);
         this.slideShow();
       }
     });
@@ -77,12 +82,12 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.galleryOptions = [{
+    let galleryOption = {
       image: false,
       thumbnails: false,
       previewInfinityMove: true,
       thumbnailsColumns: 4,
-      thumbnailsRows:5,
+      thumbnailsRows: 5,
       thumbnailsOrder: NgxGalleryOrder.Row,
       // fullWidth: true,
       width: '100%',
@@ -93,48 +98,56 @@ export class AppComponent implements OnInit {
           icon: 'fa fa-play-circle',
           titleText: 'Play',
           onClick: () => {
-            // todo if playing, dont do it again!
-            this.slideShow();
+            if(this.slideShowInterval){
+              galleryOption.actions[0].icon = 'fa fa-play-circle';
+              this.stopSlideShow();
+            } else {
+              galleryOption.actions[0].icon = 'fa fa-pause-circle';
+              this.slideShow();
+            }
           }
         }
       ]
-    }];
+    };
+    this.galleryOptions = [galleryOption];
 
-    for (let i = 0; i < 1; i++) {
-      this.galleryImages.push(
-        {
-          small: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg',
-          medium: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg',
-          big: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg'
-        },
-        {
-          small: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ',
-          medium: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ',
-          big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ'
-        },
-        {
-          small: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp',
-          medium: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp',
-          big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp'
-        });
-    }
+    this.galleryImages['8V46UZCS0V.jpg'] =
+      {
+        small: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg',
+        medium: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg',
+        big: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg'
+      };
+    this.galleryImages['01_01_slide_nature.jpg'] =
+      {
+        small: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ',
+        medium: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ',
+        big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ'
+      };
+    this.galleryImages['02_01_slide_nature.jpg'] =
+      {
+        small: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp',
+        medium: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp',
+        big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp'
+      };
+  }
+
+  getImages(){
+    return Object.keys(this.galleryImages).map(key => this.galleryImages[key]);
   }
 
   open(index: number): void {
     this.gallery.openPreview(index);
   }
 
-  previewClosed(){
+  stopSlideShow() {
     clearInterval(this.slideShowInterval);
     delete this.slideShowInterval;
-    console.log("preview closed")
-  }
-
-  previewChange(event: {index: number, image: NgxGalleryImage}){
-    console.log(event.image);
   }
 
   private slideShow() {
+    if (this.slideShowInterval) {
+      clearInterval(this.slideShowInterval);
+    }
     this.slideShowInterval = setInterval(() => {
       if (this.imagesShown.indexOf(this.gallery.preview.index) < 0) {
         this.imagesShown.push(this.gallery.preview.index);

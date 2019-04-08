@@ -1,15 +1,8 @@
 <div class="container h-100">
-  <!--<span style="height: 100px; text-align='center'"  (click)="file.click()">Upload!</span>-->
-  <ngx-gallery #gallery [options]="galleryOptions" [images]="galleryImages"
-               (previewClose)="previewClosed()" (previewChange)="previewChange($event)"></ngx-gallery>
+  <ngx-gallery #gallery [options]="galleryOptions" [images]="getImages()  "
+               (previewClose)="stopSlideShow()"></ngx-gallery>
 
-  <!--<div class="header">-->
-  <!--<mat-form-field>-->
   <input type="file" ngModel (change)="getFiles($event)" accept="image/*" style="display: none;" #file>
-  <!--<input matInput placeholder="Your name here" type="text" [(ngModel)]="sender" [ngModelOptions]="{updateOn: 'blur'}">-->
-  <!--</mat-form-field>-->
-  <!--</div>-->
-
 
   <div class="row h-100">
     <div class="col-md-3 text-center col-6 col-sm-6 my-auto">
@@ -22,46 +15,9 @@
       </div>
 
     </div>
-    <div class="col-md-3 text-center col-6 col-sm-6 content" *ngFor="let image of galleryImages; let i = index">
+    <div class="col-md-3 text-center col-6 col-sm-6 content" *ngFor="let image of getImages(); let i = index">
       <img class="img-fluid rounded  border border-dark mx-auto d-block" style="max-height: 300px; margin-bottom: 10px;"
            (click)="open(i)" [src]="image.big">
     </div>
   </div>
 </div>
-
-
-<!--<div class="col-md-3">-->
-
-<!--<div *ngIf="!!sender" #viewer class="body">-->
-<!--<div class="viewer">-->
-<!--<div class="message" *ngFor="let msg of serverMessages" [ngClass]="{'bold': msg.isBroadcast, 'others': !isMine(msg)}">-->
-<!--<div class="badge" [style.backgroundColor]="getSenderColor(msg.sender)">{{ getSenderInitials(msg.sender) }}</div>-->
-<!--<div class="content" [ngClass]="{'bold': msg.isBroadcast, 'others': !isMine(msg)}">-->
-<!--<i *ngIf="msg.isBroadcast" class="material-icons">speaker_phone</i>-->
-<!--<span *ngIf="msg.type !== 'image'">{{ msg.content }}</span>-->
-<!--<img *ngIf="msg.type === 'image'" src="data:image/png;base64,{{msg.content}}"/>-->
-<!--</div>-->
-<!--</div>-->
-<!--</div>-->
-<!--</div>-->
-<!--<div *ngIf="!!sender" class="footer">-->
-<!--<form (submit)="send()">-->
-<!--<mat-form-field>-->
-<!--<input name="clientMessage" matInput placeholder="Write a message" type="text" [(ngModel)]="clientMessage">-->
-<!--</mat-form-field>-->
-<!--<button mat-fab type="submit">-->
-<!--<i class="material-icons">send</i>-->
-<!--</button>-->
-<!--<button mat-fab (click)="toggleIsBroadcast()" type="button" [ngClass]="{'disabled': !isBroadcast}">-->
-<!--<i class="material-icons">speaker_phone</i>-->
-<!--</button>-->
-<!--<button type="button" mat-fab (click)="file.click()">-->
-<!--</button>-->
-<!--</form>-->
-<!--</div>-->
-
-<!--</div>-->
-<!--</div>-->
-
-
-<!--</div>-->

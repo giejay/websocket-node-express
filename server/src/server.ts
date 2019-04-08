@@ -34,7 +34,7 @@ ws.on('connection', (socket: WebSocket) => {
     // read all current images on disk and sent them to client
     fs.readdir('data/processed', (error: ErrnoException, images: Array<string>) => {
         console.log('Sending images: ', images);
-        images.forEach(file => socket.emit('image', fs.readFileSync('data/processed/' + file).toString('base64')));
+        images.forEach(file => socket.emit('image', {name: file, content: fs.readFileSync('data/processed/' + file).toString('base64')}));
     });
 
     let counter = 0;
@@ -61,11 +61,12 @@ ws.on('connection', (socket: WebSocket) => {
     uploader.on('stream', (fileInfo: any) => {
         console.log(`${fileInfo.wrote} / ${fileInfo.size} byte(s)`);
     });
+
     uploader.on('complete', (fileInfo: any) => {
         console.log('Upload Complete.');
 
         base64_encode(fileInfo.name).then((base64Image: string) => {
-            ws.clients().emit('image', base64Image)
+            ws.clients().emit('image', {name: fileInfo.name, content: base64Image})
         })
     });
     uploader.on('error', (err: any) => {
