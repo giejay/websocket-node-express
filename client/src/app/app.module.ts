@@ -14,6 +14,7 @@ import {SocketIoModule, SocketIoConfig} from 'ngx-socket-io';
 import {AppComponent} from './app.component';
 import { NgxGalleryModule } from 'ngx-gallery';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
+import {RouterModule} from "@angular/router";
 
 // todo should probably be my transip url or something?
 const config: SocketIoConfig = {url: 'http://localhost:3000', options: {}};
@@ -34,6 +35,7 @@ const config: SocketIoConfig = {url: 'http://localhost:3000', options: {}};
     MatInputModule,
     MatCheckboxModule,
     MatProgressSpinnerModule,
+    RouterModule.forRoot([]),
     SocketIoModule.forRoot(config)
   ],
   providers: [],

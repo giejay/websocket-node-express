@@ -1,5 +1,5 @@
 <div class="container h-100">
-  <ngx-gallery #gallery [options]="galleryOptions" [images]="getImages()  "
+  <ngx-gallery #gallery [options]="galleryOptions" [images]="getImages()" (previewChange)="previewChanged($event)"
                (previewClose)="stopSlideShow()"></ngx-gallery>
 
   <input type="file" ngModel (change)="getFiles($event)" accept="image/*" style="display: none;" #file>
@@ -9,15 +9,20 @@
       <img *ngIf="!isUploading" class="img-fluid rounded mx-auto d-block" (click)="file.click()"
            style="max-height: 300px; padding: 40px;" src="https://image.flaticon.com/icons/png/512/3/3901.png">
       <div class="row justify-content-center align-self-center" *ngIf="isUploading">
-        <mat-progress-spinner *ngIf="!isUploading" color="primary"
-        mode="determinate"
-        [value]="uploadingPercentage"></mat-progress-spinner>
+        Uploading: {{uploadingPercentage}} %
+        <!--<mat-progress-spinner color="primary"-->
+                              <!--mode="determinate"-->
+                              <!--[value]="uploadingPercentage"></mat-progress-spinner>-->
       </div>
 
     </div>
     <div class="col-md-3 text-center col-6 col-sm-6 content" *ngFor="let image of getImages(); let i = index">
-      <img class="img-fluid rounded  border border-dark mx-auto d-block" style="max-height: 300px; margin-bottom: 10px;"
-           (click)="open(i)" [src]="image.big">
+      <div class="wrapper mx-auto d-block">
+        <img class="img-fluid rounded  border border-dark"
+             style="max-height: 300px; margin-bottom: 10px;"
+             (click)="open(i)" [src]="image.big">
+        <span *ngIf="token" class="close" (click)="delete(image.label, i)"></span>
+      </div>
     </div>
   </div>
 </div>

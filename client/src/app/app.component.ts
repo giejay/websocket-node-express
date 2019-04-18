@@ -2,6 +2,7 @@ import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import {NgxGalleryComponent, NgxGalleryImage, NgxGalleryOptions, NgxGalleryOrder} from 'ngx-gallery';
 import {Socket} from 'ngx-socket-io';
 import SocketIOFileClient from 'socket.io-file-client';
+import {ActivatedRoute} from "@angular/router";
 
 @Component({
   selector: 'app-root',
@@ -17,37 +18,56 @@ export class AppComponent implements OnInit {
 
   public slideShowInterval: any;
   private uploader: SocketIOFileClient;
-  private imagesShown: Array<number> = [];
+  private imagesShown: Array<string> = [];
   public isUploading: boolean;
-  public uploadingPercentage: number = 60;
+  public uploadingPercentage: number = 0;
   public fileSize: number;
+  public token: string;
 
-  constructor(private imageSocket: Socket) {
+  constructor(private imageSocket: Socket, private route: ActivatedRoute) {
+    this.route.queryParams.subscribe(params => {
+      this.token = params['token'];
+    });
     this.uploader = new SocketIOFileClient(imageSocket);
 
-    // receiving part
+    this.registerIncomingImageCallback(imageSocket);
+    this.registerDeleteImageCallback();
+    this.registerUploaderCallbacks();
+  }
+
+  private registerIncomingImageCallback(imageSocket: Socket) {
     imageSocket.on('image', (image) => {
       console.log('receiving image!', image);
       if (this.galleryImages[image.name]) {
-        console.log('Allready processed the image: ' + image.name);
+        console.log('Already processed the image: ' + image.name);
         return;
       }
       this.galleryImages[image.name] = {
-        // small: 'data:image/png;base64,' + image.content,
-        // medium: 'data:image/png;base64,' + image.content,
-        big: 'data:image/png;base64,' + image.content
+        big: 'data:image/png;base64,' + image.content,
+        label: image.name,
+        description: image.name,
       };
       let imageCount = Object.keys(this.galleryImages).length;
       if (this.imagesShown.length === imageCount - 1) {
-        // all photos have been shown allready, jump to the last!
+        // all photos have been shown already, jump to the last!
         console.log('jumping to last!');
-        // reset it so it won't play the last image for example for 1 second.
-        clearInterval(this.slideShowInterval);
-        this.gallery.preview.showAtIndex(imageCount - 1);
+        // Reset the slideshow so it wont show it for less than 3 seconds
         this.slideShow();
+        this.gallery.preview.showAtIndex(imageCount - 1);
       }
     });
+  }
 
+  private registerDeleteImageCallback() {
+    this.imageSocket.on('imageDeleted', (image) => {
+      delete this.galleryImages[image.name];
+      this.imagesShown.splice(this.imagesShown.indexOf(image.name), 1);
+      this.gallery.preview.images = Object.keys(this.galleryImages).map(image => this.galleryImages[image].big) as string[];
+      this.gallery.preview.index = this.getImages().map(image => image.description).indexOf(this.gallery.preview.description)
+    });
+  }
+
+  private registerUploaderCallbacks() {
     // sending part
     this.uploader.on('start', (fileInfo) => {
       console.log('Start uploading', fileInfo);
@@ -57,7 +77,7 @@ export class AppComponent implements OnInit {
     });
     this.uploader.on('stream', (fileInfo) => {
       console.log('Streaming... sent ' + fileInfo.sent + ' bytes.');
-      this.uploadingPercentage = (fileInfo.sent / this.fileSize) * 100;
+      this.uploadingPercentage = Math.round((fileInfo.sent / this.fileSize) * 100);
       console.log(this.uploadingPercentage);
     });
     this.uploader.on('complete', (fileInfo) => {
@@ -98,7 +118,7 @@ export class AppComponent implements OnInit {
           icon: 'fa fa-play-circle',
           titleText: 'Play',
           onClick: () => {
-            if(this.slideShowInterval){
+            if (this.slideShowInterval) {
               galleryOption.actions[0].icon = 'fa fa-play-circle';
               this.stopSlideShow();
             } else {
@@ -113,25 +133,25 @@ export class AppComponent implements OnInit {
 
     this.galleryImages['8V46UZCS0V.jpg'] =
       {
-        small: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg',
-        medium: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg',
-        big: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg'
+        big: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg',
+        label: '8V46UZCS0V.jpg',
+        description: '8V46UZCS0V.jpg'
       };
     this.galleryImages['01_01_slide_nature.jpg'] =
       {
-        small: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ',
-        medium: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ',
-        big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ'
+        big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ',
+        label: '01_01_slide_nature.jpg',
+        description: '01_01_slide_nature.jpg'
       };
     this.galleryImages['02_01_slide_nature.jpg'] =
       {
-        small: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp',
-        medium: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp',
-        big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp'
+        big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp',
+        label: '02_01_slide_nature.jpg',
+        description: '02_01_slide_nature.jpg'
       };
   }
 
-  getImages(){
+  getImages() {
     return Object.keys(this.galleryImages).map(key => this.galleryImages[key]);
   }
 
@@ -139,9 +159,25 @@ export class AppComponent implements OnInit {
     this.gallery.openPreview(index);
   }
 
+  delete(imageName: string): void {
+    this.imageSocket.emit('delete', {image: imageName, token: this.token});
+  }
+
   stopSlideShow() {
     clearInterval(this.slideShowInterval);
     delete this.slideShowInterval;
+    this.imagesShown = [];
+    let ngxGalleryOption = this.galleryOptions[0];
+    if (ngxGalleryOption && ngxGalleryOption.actions) {
+      ngxGalleryOption.actions[0].icon = 'fa fa-play-circle';
+    }
+  }
+
+  previewChanged($event) {
+    const image = this.getImages()[$event.index];
+    if (this.imagesShown.indexOf(image.label as string) < 0) {
+      this.imagesShown.push(image.label as string);
+    }
   }
 
   private slideShow() {
@@ -149,9 +185,6 @@ export class AppComponent implements OnInit {
       clearInterval(this.slideShowInterval);
     }
     this.slideShowInterval = setInterval(() => {
-      if (this.imagesShown.indexOf(this.gallery.preview.index) < 0) {
-        this.imagesShown.push(this.gallery.preview.index);
-      }
       this.gallery.preview.showNext();
     }, 3000);
   }
