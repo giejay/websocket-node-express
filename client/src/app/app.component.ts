@@ -60,6 +60,8 @@ export class AppComponent implements OnInit {
 
   private registerDeleteImageCallback() {
     this.imageSocket.on('imageDeleted', (image) => {
+      // timing issue in deleting photos and playing
+      this.slideShow();
       delete this.galleryImages[image.name];
       this.imagesShown.splice(this.imagesShown.indexOf(image.name), 1);
       this.gallery.preview.images = Object.keys(this.galleryImages).map(image => this.galleryImages[image].big) as string[];
