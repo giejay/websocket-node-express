@@ -86,6 +86,10 @@ let registerOnDeleteHandle = function (socket: WebSocket) {
 let sendCurrentImages = function (socket: WebSocket) {
 // read all current images on disk and sent them to client
     fs.readdir('data/processed', (error: ErrnoException, files: Array<string>) => {
+        if(error){
+            console.error('Could not sent the current images', error);
+            return;
+        }
         let images = files.filter(i => imageExtensions.indexOf(i.substring(i.lastIndexOf("."))) >= 0);
         console.log('Sending images: ', images);
         images.forEach(file => {

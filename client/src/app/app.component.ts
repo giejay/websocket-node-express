@@ -60,12 +60,17 @@ export class AppComponent implements OnInit {
 
   private registerDeleteImageCallback() {
     this.imageSocket.on('imageDeleted', (image) => {
-      // timing issue in deleting photos and playing
-      this.slideShow();
+      if (this.slideShowInterval) {
+        // timing issue in deleting photos and playing
+        this.slideShow();
+      }
       delete this.galleryImages[image.name];
       this.imagesShown.splice(this.imagesShown.indexOf(image.name), 1);
+
+      // rewrite images and index so we wont have out of bounds errors when slideshowing
       this.gallery.preview.images = Object.keys(this.galleryImages).map(image => this.galleryImages[image].big) as string[];
-      this.gallery.preview.index = this.getImages().map(image => image.description).indexOf(this.gallery.preview.description)
+      const selectedImage = this.getImages().map(image => image.big).indexOf(this.gallery.preview.previewImage.nativeElement.src);
+      this.gallery.preview.index = selectedImage !== -1 ? selectedImage : 0;
     });
   }
 
@@ -110,6 +115,7 @@ export class AppComponent implements OnInit {
       previewInfinityMove: true,
       thumbnailsColumns: 4,
       thumbnailsRows: 5,
+      previewDescription: false,
       thumbnailsOrder: NgxGalleryOrder.Row,
       // fullWidth: true,
       width: '100%',
