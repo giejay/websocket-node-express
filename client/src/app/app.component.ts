@@ -1,8 +1,18 @@
 import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
-import {NgxGalleryComponent, NgxGalleryImage, NgxGalleryOptions, NgxGalleryOrder} from 'ngx-gallery';
+import {INgxGalleryImage, NgxGalleryComponent, NgxGalleryImage, NgxGalleryOptions, NgxGalleryOrder} from 'ngx-gallery';
 import {Socket} from 'ngx-socket-io';
 import SocketIOFileClient from 'socket.io-file-client';
 import {ActivatedRoute} from "@angular/router";
+
+class UploadImage {
+  constructor(public file: FileList,
+              public content: Buffer,
+              public description: string,
+              public isUploading: boolean = false,
+              public uploadingPercentage: number = 0,
+              public fileSize: number = 0) {
+  }
+}
 
 @Component({
   selector: 'app-root',
@@ -11,7 +21,7 @@ import {ActivatedRoute} from "@angular/router";
 })
 export class AppComponent implements OnInit {
   galleryOptions: NgxGalleryOptions[];
-  galleryImages: { [imageName: string]: NgxGalleryImage } = {};
+  galleryImages: { [imageName: string]: INgxGalleryImage } = {};
 
   @ViewChild('gallery') private gallery: NgxGalleryComponent;
   @ViewChild('file') private file: ElementRef;
@@ -19,10 +29,8 @@ export class AppComponent implements OnInit {
   public slideShowInterval: any;
   private uploader: SocketIOFileClient;
   private imagesShown: Array<string> = [];
-  public isUploading: boolean;
-  public uploadingPercentage: number = 0;
-  public fileSize: number;
   public token: string;
+  public uploadingImage: UploadImage;
 
   constructor(private imageSocket: Socket, private route: ActivatedRoute) {
     this.route.queryParams.subscribe(params => {
@@ -35,75 +43,18 @@ export class AppComponent implements OnInit {
     this.registerUploaderCallbacks();
   }
 
-  private registerIncomingImageCallback(imageSocket: Socket) {
-    imageSocket.on('image', (image) => {
-      console.log('receiving image!', image);
-      if (this.galleryImages[image.name]) {
-        console.log('Already processed the image: ' + image.name);
-        return;
-      }
-      this.galleryImages[image.name] = {
-        big: 'data:image/png;base64,' + image.content,
-        label: image.name,
-        description: image.name,
-      };
-      let imageCount = Object.keys(this.galleryImages).length;
-      if (this.imagesShown.length === imageCount - 1) {
-        // all photos have been shown already, jump to the last!
-        console.log('jumping to last!');
-        // Reset the slideshow so it wont show it for less than 3 seconds
-        this.slideShow();
-        this.gallery.preview.showAtIndex(imageCount - 1);
-      }
-    });
-  }
-
-  private registerDeleteImageCallback() {
-    this.imageSocket.on('imageDeleted', (image) => {
-      if (this.slideShowInterval) {
-        // timing issue in deleting photos and playing
-        this.slideShow();
-      }
-      delete this.galleryImages[image.name];
-      this.imagesShown.splice(this.imagesShown.indexOf(image.name), 1);
-
-      // rewrite images and index so we wont have out of bounds errors when slideshowing
-      this.gallery.preview.images = Object.keys(this.galleryImages).map(image => this.galleryImages[image].big) as string[];
-      const selectedImage = this.getImages().map(image => image.big).indexOf(this.gallery.preview.previewImage.nativeElement.src);
-      this.gallery.preview.index = selectedImage !== -1 ? selectedImage : 0;
-    });
-  }
-
-  private registerUploaderCallbacks() {
-    // sending part
-    this.uploader.on('start', (fileInfo) => {
-      console.log('Start uploading', fileInfo);
-      this.isUploading = true;
-      this.uploadingPercentage = 0;
-      this.fileSize = fileInfo.size;
-    });
-    this.uploader.on('stream', (fileInfo) => {
-      console.log('Streaming... sent ' + fileInfo.sent + ' bytes.');
-      this.uploadingPercentage = Math.round((fileInfo.sent / this.fileSize) * 100);
-      console.log(this.uploadingPercentage);
-    });
-    this.uploader.on('complete', (fileInfo) => {
-      console.log('Upload Complete', fileInfo);
-      this.isUploading = false;
-    });
-    this.uploader.on('error', (err) => {
-      console.log('Error!', err);
-      this.isUploading = false;
-    });
-    this.uploader.on('abort', (fileInfo) => {
-      console.log('Aborted: ', fileInfo);
-      this.isUploading = false;
-    });
+  upload() {
+    console.log('Uploading file');
+    this.uploader.upload(this.uploadingImage.file, {data: {description: this.uploadingImage.description}});
   }
 
   getFiles($event): void {
-    console.log('Uploading file');
-    this.uploader.upload($event.target.files, {});
+    this.uploadingImage = new UploadImage($event.target.files, Buffer.alloc(0), '');
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      this.uploadingImage.content = e.target.result;
+    };
+    reader.readAsDataURL(this.uploadingImage.file[0]);
     // clear input
     delete this.file.nativeElement.value;
   }
@@ -186,6 +137,72 @@ export class AppComponent implements OnInit {
     if (this.imagesShown.indexOf(image.label as string) < 0) {
       this.imagesShown.push(image.label as string);
     }
+  }
+
+  private registerIncomingImageCallback(imageSocket: Socket) {
+    imageSocket.on('image', (image) => {
+      console.log('receiving image!', image);
+      if (this.galleryImages[image.name]) {
+        console.log('Already processed the image: ' + image.name);
+        return;
+      }
+      this.galleryImages[image.name] = new NgxGalleryImage({
+        big: imageSocket.ioSocket.io.uri + '/images/' + image.name,
+        label: image.name,
+        description: image.name,
+      });
+      let imageCount = Object.keys(this.galleryImages).length;
+      if (this.imagesShown.length === imageCount - 1) {
+        // all photos have been shown already, jump to the last!
+        console.log('jumping to last!');
+        // Reset the slideshow so it wont show it for less than 3 seconds
+        this.slideShow();
+        this.gallery.preview.showAtIndex(imageCount - 1);
+      }
+    });
+  }
+
+  private registerDeleteImageCallback() {
+    this.imageSocket.on('imageDeleted', (image) => {
+      if (this.slideShowInterval) {
+        // timing issue in deleting photos and playing
+        this.slideShow();
+      }
+      delete this.galleryImages[image.name];
+      this.imagesShown.splice(this.imagesShown.indexOf(image.name), 1);
+
+      if (this.gallery.preview.previewImage) {
+        // rewrite images and index so we wont have out of bounds errors when slideshowing
+        this.gallery.preview.images = Object.keys(this.galleryImages).map(image => this.galleryImages[image].big) as string[];
+        const selectedImage = this.getImages().map(image => image.big).indexOf(this.gallery.preview.previewImage.nativeElement.src);
+        this.gallery.preview.index = selectedImage !== -1 ? selectedImage : 0;
+      }
+    });
+  }
+
+  private registerUploaderCallbacks() {
+    // sending part
+    this.uploader.on('start', (fileInfo) => {
+      console.log('Start uploading', fileInfo);
+      this.uploadingImage.isUploading = true;
+      this.uploadingImage.fileSize = fileInfo.size;
+    });
+    this.uploader.on('stream', (fileInfo) => {
+      console.log('Streaming... sent ' + fileInfo.sent + ' bytes.');
+      this.uploadingImage.uploadingPercentage = Math.round((fileInfo.sent / this.uploadingImage.fileSize) * 100);
+    });
+    this.uploader.on('complete', (fileInfo) => {
+      console.log('Upload Complete', fileInfo);
+      delete this.uploadingImage;
+    });
+    this.uploader.on('error', (err) => {
+      console.log('Error!', err);
+      delete this.uploadingImage;
+    });
+    this.uploader.on('abort', (fileInfo) => {
+      console.log('Aborted: ', fileInfo);
+      delete this.uploadingImage;
+    });
   }
 
   private slideShow() {

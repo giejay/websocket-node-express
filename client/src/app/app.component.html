@@ -1,4 +1,15 @@
-<div class="container h-100">
+<div *ngIf="uploadingImage && uploadingImage.content.length == 0" style="margin-top: 20px;">
+  Bezig met het verwerken van de afbeelding
+</div>
+<div class="container h-100" style="margin-top: 20px;" *ngIf="uploadingImage && uploadingImage.content.length > 0 && !uploadingImage.isUploading">
+  <div class="grid12-6">
+    <img class="img-fluid rounded  border border-dark" [src]="uploadingImage.content">
+    <input [ngModel]="uploadingImage.description" (ngModelChange)="uploadingImage.description = $event"
+           type="text" style="outline-width: 0;" class="inner_box" placeholder="Voeg een text toe"/>
+  </div>
+  <button type="button" class="btn btn-warning" (click)="upload()" style="margin-bottom: 5px">Verstuur!</button>
+</div>
+<div class="container h-100" *ngIf="!uploadingImage || uploadingImage.isUploading">
   <ngx-gallery #gallery [options]="galleryOptions" [images]="getImages()" (previewChange)="previewChanged($event)"
                (previewClose)="stopSlideShow()"></ngx-gallery>
 
@@ -6,15 +17,15 @@
 
   <div class="row h-100">
     <div class="col-md-3 text-center col-6 col-sm-6 my-auto">
-      <img *ngIf="!isUploading" class="img-fluid rounded mx-auto d-block" (click)="file.click()"
+      <img *ngIf="!uploadingImage || !uploadingImage.isUploading" class="img-fluid rounded mx-auto d-block"
+           (click)="file.click()"
            style="max-height: 300px; padding: 40px;" src="https://image.flaticon.com/icons/png/512/3/3901.png">
-      <div class="row justify-content-center align-self-center" *ngIf="isUploading">
-        Uploading: {{uploadingPercentage}} %
+      <div class="row justify-content-center align-self-center" *ngIf="uploadingImage && uploadingImage.isUploading">
+        Uploading: {{uploadingImage.uploadingPercentage}} %
         <!--<mat-progress-spinner color="primary"-->
-                              <!--mode="determinate"-->
-                              <!--[value]="uploadingPercentage"></mat-progress-spinner>-->
+        <!--mode="determinate"-->
+        <!--[value]="uploadingPercentage"></mat-progress-spinner>-->
       </div>
-
     </div>
     <div class="col-md-3 text-center col-6 col-sm-6 content" *ngFor="let image of getImages(); let i = index">
       <div class="wrapper mx-auto d-block">

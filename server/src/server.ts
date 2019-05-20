@@ -34,7 +34,7 @@ let registerFileUploadHandle = function (socket: WebSocket) {
         uploadDir: 'data/incoming',							// simple directory
         accepts: ['image/jpeg', 'image/png'],		// chrome and some of browsers checking mp3 as 'audio/mp3', not 'audio/mpeg'
         maxFileSize: 10000000, 						// 4 MB. default is undefined(no limit)
-        chunkSize: 100240,							// default is 10240(1KB)
+        chunkSize: 100240,
         transmissionDelay: 0,						// delay of each transmission, higher value saves more cpu resources, lower upload speed. default is 0(no delay)
         overwrite: true,					// overwrite file if exists, default is true.
         rename: () => {
@@ -50,12 +50,20 @@ let registerFileUploadHandle = function (socket: WebSocket) {
     });
 
     uploader.on('complete', (fileInfo: any) => {
-        console.log('Upload Complete.');
+        console.log('Upload Complete.', fileInfo);
 
-        // Send the image to all connected clients
-        base64_encode(fileInfo.name).then((base64Image: string) => {
-            ws.clients().emit('image', {name: fileInfo.name, content: base64Image})
-        })
+        rotate(fileInfo.uploadDir).then(buffer => {
+
+            fs.writeFile('data/processed/' + fileInfo.name, buffer, (err: any) => {
+                if (err) {
+                    console.error('Could not write file to processed folder', err);
+                } else {
+                    fs.writeFile('data/processed/' + fileInfo.name + '_desc.txt', fileInfo.data.description);
+                    // Send the image to all connected clients
+                    ws.clients().emit('image', {name: fileInfo.name, description: fileInfo.data.description})
+                }
+            });
+        });
     });
     uploader.on('error', (err: any) => {
         console.log('Error!', err);
@@ -71,6 +79,7 @@ let registerOnDeleteHandle = function (socket: WebSocket) {
         if (data.token === 'GieJayMarried') {
             console.log('deleting: ' + data.image);
             let fullPath = 'data/processed/' + data.image;
+            // todo use promise chaining
             if (fs.existsSync(fullPath)) {
                 fs.renameSync(fullPath, 'data/removed/' + data.image);
                 ws.clients().emit('imageDeleted', {name: data.image})
@@ -84,9 +93,9 @@ let registerOnDeleteHandle = function (socket: WebSocket) {
 };
 
 let sendCurrentImages = function (socket: WebSocket) {
-// read all current images on disk and sent them to client
+    // read all current images on disk and sent them to client
     fs.readdir('data/processed', (error: ErrnoException, files: Array<string>) => {
-        if(error){
+        if (error) {
             console.error('Could not sent the current images', error);
             return;
         }
@@ -95,32 +104,39 @@ let sendCurrentImages = function (socket: WebSocket) {
         images.forEach(file => {
             socket.emit('image', {
                 name: file,
-                content: fs.readFileSync('data/processed/' + file).toString('base64')
+                description: fs.existsSync(file + '_desc.txt') ? fs.readFileSync(file + '_desc.txt', 'utf8') : ''
             })
         });
     });
 };
 
 // function to encode file data to base64 encoded string
-let base64_encode = function (file: string): Promise<string> {
-    // read binary data
-    const bitmap = fs.readFileSync('data/incoming/' + file);
-    // const withoutThumb = deleteThumbnailFromExif(bitmap);
+let base64_encode_rotate = function (file: string): Promise<string> {
+    return new Promise(function (resolve, reject) {
+        fs.readFile('data/incoming/' + file, (err: any, data: Buffer) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(data.toString('base64'))
+            }
+        });
+    });
+};
 
+let rotate = function (file: string): Promise<Buffer> {
     return new Promise(function (resolve) {
-        jo.rotate(bitmap, options, function (error: any, buffer: Buffer, orientation: any, dimensions: any) {
+        jo.rotate(file, options, function (error: any, buffer: Buffer, orientation: any, dimensions: any) {
             if (error) {
                 // already proper orientation?
-                buffer = bitmap;
                 // todo make it smaller over here!!
-                console.log('An error occurred when rotating the file: ' + error.message)
+                console.log('An error occurred when rotating the file: ' + error.message);
+                resolve(fs.readFileSync(file));
             } else {
                 console.log('Orientation was: ' + orientation);
                 console.log('Height after rotation: ' + dimensions.height);
                 console.log('Width after rotation: ' + dimensions.width);
+                resolve(buffer);
             }
-            fs.writeFileSync('data/processed/' + file, buffer);
-            resolve(buffer.toString('base64'));
         });
     });
 };
@@ -134,6 +150,8 @@ function deleteThumbnailFromExif(imageBuffer: Buffer) {
     const newImageString = piexif.insert(exifBytes, imageString);
     return Buffer.from(newImageString, 'binary')
 }
+
+app.use('/images', express.static('data/processed'));
 
 //start our server
 imageServer.listen(3000, () => {
