@@ -20,6 +20,7 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.16.2",
+    "fs-extra": "^8.0.1",
     "jpeg-autorotate": "^4.0.1",
     "piexifjs": "^1.0.4",
     "socket.io": "^2.2.0",

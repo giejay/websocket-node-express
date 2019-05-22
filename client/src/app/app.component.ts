@@ -66,7 +66,7 @@ export class AppComponent implements OnInit {
       previewInfinityMove: true,
       thumbnailsColumns: 4,
       thumbnailsRows: 5,
-      previewDescription: false,
+      previewDescription: true,
       thumbnailsOrder: NgxGalleryOrder.Row,
       // fullWidth: true,
       width: '100%',
@@ -94,19 +94,19 @@ export class AppComponent implements OnInit {
       {
         big: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg',
         label: '8V46UZCS0V.jpg',
-        description: '8V46UZCS0V.jpg'
+        description: 'Poarneemn'
       };
     this.galleryImages['01_01_slide_nature.jpg'] =
       {
         big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ',
         label: '01_01_slide_nature.jpg',
-        description: '01_01_slide_nature.jpg'
+        description: 'Prachtig prachtig'
       };
     this.galleryImages['02_01_slide_nature.jpg'] =
       {
         big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp',
         label: '02_01_slide_nature.jpg',
-        description: '02_01_slide_nature.jpg'
+        description: 'Mooie natuur afbeelding'
       };
   }
 
@@ -149,7 +149,7 @@ export class AppComponent implements OnInit {
       this.galleryImages[image.name] = new NgxGalleryImage({
         big: imageSocket.ioSocket.io.uri + '/images/' + image.name,
         label: image.name,
-        description: image.name,
+        description: image.description,
       });
       let imageCount = Object.keys(this.galleryImages).length;
       if (this.imagesShown.length === imageCount - 1) {

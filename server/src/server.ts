@@ -5,7 +5,7 @@ import * as WebSocket from 'ws';
 import piexif from 'piexifjs'
 import ErrnoException = NodeJS.ErrnoException;
 
-const fs = require('fs');
+const fs = require('fs-extra');
 const app = express();
 
 // Websocket server
@@ -54,14 +54,13 @@ let registerFileUploadHandle = function (socket: WebSocket) {
 
         rotate(fileInfo.uploadDir).then(buffer => {
 
-            fs.writeFile('data/processed/' + fileInfo.name, buffer, (err: any) => {
-                if (err) {
-                    console.error('Could not write file to processed folder', err);
-                } else {
-                    fs.writeFile('data/processed/' + fileInfo.name + '_desc.txt', fileInfo.data.description);
+            fs.writeFile('data/processed/' + fileInfo.name, buffer).then(() => {
+                fs.writeFile('data/processed/' + fileInfo.name + '_desc.txt', fileInfo.data.description).then(() => {
                     // Send the image to all connected clients
                     ws.clients().emit('image', {name: fileInfo.name, description: fileInfo.data.description})
-                }
+                });
+            }).catch((err: any) => {
+                console.error('Could not write file to processed folder', err);
             });
         });
     });
@@ -80,12 +79,15 @@ let registerOnDeleteHandle = function (socket: WebSocket) {
             console.log('deleting: ' + data.image);
             let fullPath = 'data/processed/' + data.image;
             // todo use promise chaining
-            if (fs.existsSync(fullPath)) {
-                fs.renameSync(fullPath, 'data/removed/' + data.image);
-                ws.clients().emit('imageDeleted', {name: data.image})
-            } else {
-                console.error('Full path does not exist: ' + fullPath);
-            }
+            fs.exists(fullPath).then((exists: boolean) => {
+                if (exists) {
+                    return fs.rename(fullPath, 'data/removed/' + data.image).then(() => {
+                        return ws.clients().emit('imageDeleted', {name: data.image});
+                    });
+                } else {
+                    console.error('Full path does not exist: ' + fullPath);
+                }
+            });
         } else {
             console.error('Tried to delete image with invalid token');
         }
@@ -94,19 +96,22 @@ let registerOnDeleteHandle = function (socket: WebSocket) {
 
 let sendCurrentImages = function (socket: WebSocket) {
     // read all current images on disk and sent them to client
-    fs.readdir('data/processed', (error: ErrnoException, files: Array<string>) => {
-        if (error) {
-            console.error('Could not sent the current images', error);
-            return;
-        }
+    fs.readdir('data/processed').then((files: Array<string>) => {
         let images = files.filter(i => imageExtensions.indexOf(i.substring(i.lastIndexOf("."))) >= 0);
         console.log('Sending images: ', images);
         images.forEach(file => {
-            socket.emit('image', {
-                name: file,
-                description: fs.existsSync(file + '_desc.txt') ? fs.readFileSync(file + '_desc.txt', 'utf8') : ''
-            })
+            let descriptionPath = 'data/processed/' + file + '_desc.txt';
+            fs.exists(descriptionPath).then((exists: boolean) => {
+                return exists ? fs.readFile(descriptionPath, 'utf8') : '';
+            }).then((description: string) => {
+                socket.emit('image', {
+                    name: file,
+                    description: description
+                })
+            });
         });
+    }).catch((error: ErrnoException) => {
+        console.error('Could not sent the current images', error);
     });
 };
 

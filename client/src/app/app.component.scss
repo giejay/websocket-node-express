@@ -97,29 +97,31 @@
   }
 }
 
-.grid12-6{
-  position:relative;
+.grid12-6 {
+  position: relative;
 }
-.grid12-6 .inner_box{
-  position:absolute;
-  background:rgba(255,255,255,0.6);
-  top:80%;
-  left:50%;
+
+.grid12-6 .inner_box {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.6);
+  top: 80%;
+  left: 50%;
   width: 80%;
   padding-top: 10px;
   padding-bottom: 10px;
-  transform:translate(-50%,-50%);
-  //padding: 10px 100px;
-  text-align:center;
+  transform: translate(-50%, -50%);
+  text-align: center;
 }
 
 .wrapper {
   position: relative;
   display: inline-block;
 }
+
 .close:before {
   content: '✕';
 }
+
 .close {
   position: absolute;
   top: 10px;
