@@ -9,6 +9,7 @@
     "test": "ng test",
     "lint": "ng lint",
     "e2e": "ng e2e",
+    "pack": "ng build --prod && node upload.js",
     "postinstall": "node patch.js"
   },
   "private": true,
@@ -34,6 +35,7 @@
     "ngx-socket-io": "^2.1.1",
     "rxjs": "^6.2.2",
     "rxjs-compat": "^6.0.0-rc.0",
+    "sftp-upload": "^1.0.1",
     "socket.io": "^2.2.0",
     "socket.io-file-client": "^2.0.2",
     "text-encoding": "^0.7.0",
