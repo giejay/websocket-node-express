@@ -25,7 +25,10 @@
               "node_modules/font-awesome/css/font-awesome.css",
               "./node_modules/ngx-lightbox/lightbox.css"
             ],
-            "scripts": []
+            "scripts": [
+              "./node_modules/exif-js/exif.js",
+              "./node_modules/blueimp-load-image/js/load-image.all.min.js"
+            ]
           },
           "configurations": {
             "production": {

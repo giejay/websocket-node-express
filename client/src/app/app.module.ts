@@ -16,7 +16,7 @@ import { NgxGalleryModule } from 'ngx-gallery';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import {RouterModule} from '@angular/router';
 
-// todo should probably be my transip url or something?
+// todo move this to constants somehow
 // const config: SocketIoConfig = {url: 'http://localhost:3000', options: {}};
 const config: SocketIoConfig = {url: 'http://transip.giejay.nl:3000', options: {}};
 

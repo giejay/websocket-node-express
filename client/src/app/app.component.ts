@@ -2,7 +2,10 @@ import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import {INgxGalleryImage, NgxGalleryComponent, NgxGalleryImage, NgxGalleryOptions, NgxGalleryOrder} from 'ngx-gallery';
 import {Socket} from 'ngx-socket-io';
 import SocketIOFileClient from 'socket.io-file-client';
-import {ActivatedRoute} from "@angular/router";
+import {ActivatedRoute} from '@angular/router';
+
+declare var EXIF: any;
+declare var loadImage: any;
 
 class UploadImage {
   constructor(public file: FileList,
@@ -10,6 +13,7 @@ class UploadImage {
               public description: string,
               public isUploading: boolean = false,
               public uploadingPercentage: number = 0,
+              public orientation: any = {},
               public fileSize: number = 0) {
   }
 }
@@ -25,6 +29,7 @@ export class AppComponent implements OnInit {
 
   @ViewChild('gallery') private gallery: NgxGalleryComponent;
   @ViewChild('file') private file: ElementRef;
+  @ViewChild('imageElement') private image: HTMLImageElement;
 
   public slideShowInterval: any;
   private uploader: SocketIOFileClient;
@@ -48,13 +53,19 @@ export class AppComponent implements OnInit {
     this.uploader.upload(this.uploadingImage.file, {data: {description: this.uploadingImage.description}});
   }
 
+  getClass() {
+    return this.uploadingImage.orientation.value;
+  }
+
   getFiles($event): void {
     this.uploadingImage = new UploadImage($event.target.files, Buffer.alloc(0), '');
-    const reader = new FileReader();
-    reader.onload = (e: any) => {
-      this.uploadingImage.content = e.target.result;
-    };
-    reader.readAsDataURL(this.uploadingImage.file[0]);
+    loadImage(
+      $event.target.files[0],
+      (img) => {
+        this.uploadingImage.content = img.toDataURL();
+      },
+      {orientation: true} // Options
+    );
     // clear input
     delete this.file.nativeElement.value;
   }

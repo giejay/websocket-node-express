@@ -29,3 +29,14 @@ app-root {
 .ngx-gallery-preview-text[_ngcontent-c4] {
   font-size: 30px !important;
 }
+
+.rotate-180{
+  transform: rotate(180deg);
+}
+
+.rotate-90{
+  transform: rotate(90deg);
+}
+.rotate-min-90{
+  transform: rotate(-90deg);
+}
