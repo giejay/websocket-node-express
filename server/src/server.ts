@@ -158,6 +158,7 @@ function deleteThumbnailFromExif(imageBuffer: Buffer) {
 }
 
 app.use('/images', express.static('data/processed'));
+app.use('/other', express.static('data/other'));
 
 //start our server
 imageServer.listen(3000, () => {

@@ -15,7 +15,7 @@ import {AppComponent} from './app.component';
 import { NgxGalleryModule } from 'ngx-gallery';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import {RouterModule} from '@angular/router';
-
+import { LazyLoadImageModule } from 'ng-lazyload-image';
 // todo move this to constants somehow
 // const config: SocketIoConfig = {url: 'http://localhost:3000', options: {}};
 const config: SocketIoConfig = {url: 'http://transip.giejay.nl:3000', options: {}};
@@ -37,7 +37,8 @@ const config: SocketIoConfig = {url: 'http://transip.giejay.nl:3000', options: {
     MatCheckboxModule,
     MatProgressSpinnerModule,
     RouterModule.forRoot([]),
-    SocketIoModule.forRoot(config)
+    SocketIoModule.forRoot(config),
+    LazyLoadImageModule.forRoot({})
   ],
   providers: [],
   bootstrap: [AppComponent]

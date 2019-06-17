@@ -34,8 +34,9 @@
     <div class="col-md-3 text-center col-6 col-sm-6 content" *ngFor="let image of getImages(); let i = index">
       <div class="wrapper mx-auto d-block">
         <img class="img-fluid rounded  border border-dark"
+             [defaultImage]="defaultImage" [lazyLoad]="image.big" [offset]="offset"
              style="max-height: 300px; margin-bottom: 10px;"
-             (click)="open(i)" [src]="image.big">
+             (click)="open(i)">
         <span *ngIf="token" class="close" (click)="delete(image.label)"></span>
       </div>
     </div>

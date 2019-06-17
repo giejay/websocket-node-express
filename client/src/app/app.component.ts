@@ -8,7 +8,7 @@ declare var loadImage: any;
 
 class UploadImage {
   constructor(public file: FileList,
-              public content: Buffer,
+              public content: string,
               public description: string,
               public isUploading: boolean = false,
               public uploadingPercentage: number = 0,
@@ -35,6 +35,8 @@ export class AppComponent implements OnInit {
   private imagesShown: Array<string> = [];
   public token: string;
   public uploadingImage: UploadImage;
+  public defaultImage = 'http://transip.giejay.nl:3000/other/default.jpg';
+  public offset = 100;
 
   constructor(private imageSocket: Socket, private route: ActivatedRoute) {
     this.route.queryParams.subscribe(params => {
@@ -47,26 +49,8 @@ export class AppComponent implements OnInit {
     this.registerUploaderCallbacks();
   }
 
-  upload() {
-    this.uploader.upload(this.uploadingImage.file, {data: {description: this.uploadingImage.description}});
-  }
-
-  getFiles($event): void {
-    this.uploadingImage = new UploadImage($event.target.files, Buffer.alloc(0), '');
-    loadImage(
-      $event.target.files[0],
-      (img) => {
-        this.uploadingImage.width = Math.min(window.innerWidth - 30, img.width);
-        this.uploadingImage.content = img.toDataURL();
-      },
-      {orientation: true} // Options
-    );
-    // clear input
-    delete this.file.nativeElement.value;
-  }
-
   ngOnInit(): void {
-    let galleryOption = {
+    const galleryOption = {
       image: false,
       thumbnails: false,
       previewInfinityMove: true,
@@ -96,24 +80,35 @@ export class AppComponent implements OnInit {
     };
     this.galleryOptions = [galleryOption];
 
-    this.galleryImages['8V46UZCS0V.jpg'] =
-      {
+    this.galleryImages['8V46UZCS0V.jpg'] = {
         big: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg',
         label: '8V46UZCS0V.jpg',
         description: 'Poarneemn'
       };
-    this.galleryImages['01_01_slide_nature.jpg'] =
-      {
+    this.galleryImages['01_01_slide_nature.jpg'] = {
         big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ',
         label: '01_01_slide_nature.jpg',
         description: 'Prachtig prachtig'
       };
-    this.galleryImages['02_01_slide_nature.jpg'] =
-      {
+    this.galleryImages['02_01_slide_nature.jpg'] = {
         big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp',
         label: '02_01_slide_nature.jpg',
         description: 'Mooie natuur afbeelding'
       };
+  }
+
+  upload() {
+    this.uploader.upload(this.uploadingImage.file, {data: {description: this.uploadingImage.description}});
+  }
+
+  getFiles($event): void {
+    this.uploadingImage = new UploadImage($event.target.files, '', '');
+    this.parseImage($event.target.files[0]).then((image: HTMLCanvasElement) => {
+      this.uploadingImage.width = Math.min(window.innerWidth - 30, image.width);
+      this.uploadingImage.content = image.toDataURL();
+    });
+    // clear input
+    delete this.file.nativeElement.value;
   }
 
   getImages() {
@@ -132,7 +127,7 @@ export class AppComponent implements OnInit {
     clearInterval(this.slideShowInterval);
     delete this.slideShowInterval;
     this.imagesShown = [];
-    let ngxGalleryOption = this.galleryOptions[0];
+    const ngxGalleryOption = this.galleryOptions[0];
     if (ngxGalleryOption && ngxGalleryOption.actions) {
       ngxGalleryOption.actions[0].icon = 'fa fa-play-circle';
     }
@@ -223,5 +218,18 @@ export class AppComponent implements OnInit {
       this.gallery.preview.showNext();
     }, 3000);
   }
+
+  private parseImage(file) {
+    return new Promise((resolve) => {
+      loadImage(
+        file,
+        (img: HTMLCanvasElement) => {
+          resolve(img);
+        },
+        {orientation: true} // Options
+      );
+    });
+  }
+
 
 }
