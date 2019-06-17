@@ -17,6 +17,7 @@ const options = {quality: 65};
 
 const imageExtensions = ['.png', '.jpg', '.jpeg'];
 let counter = 0;
+const token = process.env.token;
 
 ws.on('connection', (socket: WebSocket) => {
     console.log('Socket connected.');
@@ -75,7 +76,7 @@ let registerFileUploadHandle = function (socket: WebSocket) {
 let registerOnDeleteHandle = function (socket: WebSocket) {
     socket.on('delete', (data) => {
         // todo store passwords in database, hashed?
-        if (data.token === 'GieJayMarried') {
+        if (data.token === token) {
             console.log('deleting: ' + data.image);
             let fullPath = 'data/processed/' + data.image;
             // todo use promise chaining

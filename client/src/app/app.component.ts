@@ -4,7 +4,6 @@ import {Socket} from 'ngx-socket-io';
 import SocketIOFileClient from 'socket.io-file-client';
 import {ActivatedRoute} from '@angular/router';
 
-declare var EXIF: any;
 declare var loadImage: any;
 
 class UploadImage {
@@ -14,7 +13,8 @@ class UploadImage {
               public isUploading: boolean = false,
               public uploadingPercentage: number = 0,
               public orientation: any = {},
-              public fileSize: number = 0) {
+              public fileSize: number = 0,
+              public width: number = 0) {
   }
 }
 
@@ -29,7 +29,6 @@ export class AppComponent implements OnInit {
 
   @ViewChild('gallery') private gallery: NgxGalleryComponent;
   @ViewChild('file') private file: ElementRef;
-  @ViewChild('imageElement') private image: HTMLImageElement;
 
   public slideShowInterval: any;
   private uploader: SocketIOFileClient;
@@ -49,12 +48,7 @@ export class AppComponent implements OnInit {
   }
 
   upload() {
-    console.log('Uploading file');
     this.uploader.upload(this.uploadingImage.file, {data: {description: this.uploadingImage.description}});
-  }
-
-  getClass() {
-    return this.uploadingImage.orientation.value;
   }
 
   getFiles($event): void {
@@ -62,6 +56,7 @@ export class AppComponent implements OnInit {
     loadImage(
       $event.target.files[0],
       (img) => {
+        this.uploadingImage.width = Math.min(window.innerWidth - 30, img.width);
         this.uploadingImage.content = img.toDataURL();
       },
       {orientation: true} // Options
@@ -150,6 +145,10 @@ export class AppComponent implements OnInit {
     }
   }
 
+  exitUpload() {
+    delete this.uploadingImage;
+  }
+
   private registerIncomingImageCallback(imageSocket: Socket) {
     imageSocket.on('image', (image) => {
       console.log('receiving image!', image);
@@ -162,7 +161,7 @@ export class AppComponent implements OnInit {
         label: image.name,
         description: image.description,
       });
-      let imageCount = Object.keys(this.galleryImages).length;
+      const imageCount = Object.keys(this.galleryImages).length;
       if (this.imagesShown.length === imageCount - 1) {
         // all photos have been shown already, jump to the last!
         console.log('jumping to last!');
@@ -184,8 +183,8 @@ export class AppComponent implements OnInit {
 
       if (this.gallery.preview.previewImage) {
         // rewrite images and index so we wont have out of bounds errors when slideshowing
-        this.gallery.preview.images = Object.keys(this.galleryImages).map(image => this.galleryImages[image].big) as string[];
-        const selectedImage = this.getImages().map(image => image.big).indexOf(this.gallery.preview.previewImage.nativeElement.src);
+        this.gallery.preview.images = Object.keys(this.galleryImages).map(img => this.galleryImages[img].big) as string[];
+        const selectedImage = this.getImages().map(img => img.big).indexOf(this.gallery.preview.previewImage.nativeElement.src);
         this.gallery.preview.index = selectedImage !== -1 ? selectedImage : 0;
       }
     });
