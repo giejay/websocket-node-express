@@ -100,17 +100,27 @@ let sendCurrentImages = function (socket: WebSocket) {
     fs.readdir('data/processed').then((files: Array<string>) => {
         let images = files.filter(i => imageExtensions.indexOf(i.substring(i.lastIndexOf("."))) >= 0);
         console.log('Sending images: ', images);
-        images.forEach(file => {
-            let descriptionPath = 'data/processed/' + file + '_desc.txt';
-            fs.exists(descriptionPath).then((exists: boolean) => {
+        Promise.all(images.map(value => {
+            let descriptionPath = 'data/processed/' + value + '_desc.txt';
+            return fs.exists(descriptionPath).then((exists: boolean) => {
                 return exists ? fs.readFile(descriptionPath, 'utf8') : '';
             }).then((description: string) => {
-                socket.emit('image', {
-                    name: file,
+                return {
+                    name: value,
                     description: description
-                })
-            });
+                }
+            })
+        })).then(values => {
+            socket.emit('images', values.sort((image1, image2) => image1.name.localeCompare(image2.name)));
         });
+        // images.forEach(file => {
+        //     let descriptionPath = 'data/processed/' + file + '_desc.txt';
+        //     fs.exists(descriptionPath).then((exists: boolean) => {
+        //         return exists ? fs.readFile(descriptionPath, 'utf8') : '';
+        //     }).then((description: string) => {
+        //         socket.emit('image',)
+        //     });
+        // });
     }).catch((error: ErrnoException) => {
         console.error('Could not sent the current images', error);
     });

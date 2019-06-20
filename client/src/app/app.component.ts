@@ -31,18 +31,23 @@ export class AppComponent implements OnInit {
   @ViewChild('file') private file: ElementRef;
 
   public slideShowInterval: any;
+  private slideShowIntervalMillis = 5000;
+  private imageShownTimeout;
   private uploader: SocketIOFileClient;
   private imagesShown: Array<string> = [];
   public token: string;
   public uploadingImage: UploadImage;
-  public defaultImage = 'http://transip.giejay.nl:3000/other/default.jpg';
+  public defaultImage = 'assets/img/default.jpg';
   public offset = 100;
+  public positionBeforeMovingToNewPhoto = -1;
+  private readonly apiBaseUri: string | undefined;
 
   constructor(private imageSocket: Socket, private route: ActivatedRoute) {
     this.route.queryParams.subscribe(params => {
       this.token = params['token'];
     });
     this.uploader = new SocketIOFileClient(imageSocket);
+    this.apiBaseUri = imageSocket.ioSocket.io.uri;
 
     this.registerIncomingImageCallback(imageSocket);
     this.registerDeleteImageCallback();
@@ -79,22 +84,6 @@ export class AppComponent implements OnInit {
       ]
     };
     this.galleryOptions = [galleryOption];
-
-    this.galleryImages['8V46UZCS0V.jpg'] = {
-        big: 'https://d2lm6fxwu08ot6.cloudfront.net/img-thumbs/960w/8V46UZCS0V.jpg',
-        label: '8V46UZCS0V.jpg',
-        description: 'Poarneemn'
-      };
-    this.galleryImages['01_01_slide_nature.jpg'] = {
-        big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/01_01_slide_nature.jpg?itok=NOMtH0PJ',
-        label: '01_01_slide_nature.jpg',
-        description: 'Prachtig prachtig'
-      };
-    this.galleryImages['02_01_slide_nature.jpg'] = {
-        big: 'https://croatia.hr/sites/default/files/styles/image_full_width/public/2017-08/02_01_slide_nature.jpg?itok=ItAHmLlp',
-        label: '02_01_slide_nature.jpg',
-        description: 'Mooie natuur afbeelding'
-      };
   }
 
   upload() {
@@ -134,9 +123,22 @@ export class AppComponent implements OnInit {
   }
 
   previewChanged($event) {
+    console.log('preview changed');
+    clearTimeout(this.imageShownTimeout);
+    if ($event.index === 0 && this.positionBeforeMovingToNewPhoto !== -1) {
+      // jump back to last position when all the new photos are shown and we are at the beginning again
+      const position = this.positionBeforeMovingToNewPhoto;
+      // reset it again so it wont move to this position indefinitely
+      this.positionBeforeMovingToNewPhoto = -1;
+      // position is stored in a constant first and reset first so previewChanged method wont "stackoverflow"
+      this.gallery.preview.showAtIndex(position);
+    }
     const image = this.getImages()[$event.index];
     if (this.imagesShown.indexOf(image.label as string) < 0) {
-      this.imagesShown.push(image.label as string);
+      this.imageShownTimeout = setTimeout(() => {
+        // only push it after the photo has been shown for at least x seconds to prevent new photos overlapping each other very fast
+        this.imagesShown.push(image.label as string);
+      }, this.slideShowIntervalMillis - 1000);
     }
   }
 
@@ -147,24 +149,38 @@ export class AppComponent implements OnInit {
   private registerIncomingImageCallback(imageSocket: Socket) {
     imageSocket.on('image', (image) => {
       console.log('receiving image!', image);
-      if (this.galleryImages[image.name]) {
-        console.log('Already processed the image: ' + image.name);
-        return;
-      }
-      this.galleryImages[image.name] = new NgxGalleryImage({
-        big: imageSocket.ioSocket.io.uri + '/images/' + image.name,
-        label: image.name,
-        description: image.description,
-      });
-      const imageCount = Object.keys(this.galleryImages).length;
-      if (this.imagesShown.length === imageCount - 1) {
+      this.addPhoto(image);
+      if (this.gallery.preview && this.allPhotosShown()) {
         // all photos have been shown already, jump to the last!
-        console.log('jumping to last!');
-        // Reset the slideshow so it wont show it for less than 3 seconds
+        // save current position to restore if all new photos also have been shown
+        this.positionBeforeMovingToNewPhoto = this.gallery.preview.index;
+        // Reset the slideshow so it wont show it for less than 5 seconds
         this.slideShow();
-        this.gallery.preview.showAtIndex(imageCount - 1);
+        this.gallery.preview.showAtIndex(Object.keys(this.galleryImages).length - 1);
       }
     });
+
+    imageSocket.on('images', (images) => {
+      console.log('recieving initial images', images);
+      images.forEach(img => this.addPhoto(img));
+    });
+  }
+
+  private addPhoto(image) {
+    if (this.galleryImages[image.name]) {
+      console.log('Already processed the image: ' + image.name);
+      return;
+    }
+    this.galleryImages[image.name] = new NgxGalleryImage({
+      big: this.apiBaseUri + '/images/' + image.name,
+      label: image.name,
+      description: image.description || 'Upload je foto op www.married.giejay.nl!'
+    });
+  }
+
+  private allPhotosShown() {
+    const imageCount = Object.keys(this.galleryImages).length;
+    return this.imagesShown.length && this.imagesShown.length === imageCount - 1
   }
 
   private registerDeleteImageCallback() {
@@ -216,7 +232,7 @@ export class AppComponent implements OnInit {
     }
     this.slideShowInterval = setInterval(() => {
       this.gallery.preview.showNext();
-    }, 3000);
+    }, this.slideShowIntervalMillis);
   }
 
   private parseImage(file) {
