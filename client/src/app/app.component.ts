@@ -51,6 +51,7 @@ export class AppComponent implements OnInit {
   public offset = 100;
   public positionBeforeMovingToNewPhoto = -1;
   private readonly apiBaseUri: string | undefined;
+  public reloading: boolean;
 
   constructor(private imageSocket: Socket) {
     this.user = new User();
@@ -205,7 +206,7 @@ export class AppComponent implements OnInit {
     this.galleryImages[image.name] = new NgxGalleryImage({
       big: this.apiBaseUri + '/images/' + image.name,
       label: image.name,
-      description: image.description || 'Upload je foto op www.married.giejay.nl!'
+      description: image.description
     });
   }
 
@@ -238,6 +239,11 @@ export class AppComponent implements OnInit {
       console.log('Start uploading', fileInfo);
       this.uploadingImage.isUploading = true;
       this.uploadingImage.fileSize = fileInfo.size;
+      // weird bug in lazy loading library not fetching images without a reload of html
+      this.reloading = true;
+      setTimeout(() => {
+        this.reloading = false;
+      }, 5);
     });
     this.uploader.on('stream', (fileInfo) => {
       console.log('Streaming... sent ' + fileInfo.sent + ' bytes.');

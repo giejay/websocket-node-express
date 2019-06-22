@@ -124,7 +124,7 @@ let sendCurrentImages = function (socket: WebSocket) {
         Promise.all(images.map(value => {
             let descriptionPath = 'data/processed/' + value + '_desc.txt';
             return fs.exists(descriptionPath).then((exists: boolean) => {
-                return exists ? fs.readFile(descriptionPath, 'utf8') : '';
+                return exists ? fs.readFile(descriptionPath, 'utf8') : 'Upload je foto op www.married.giejay.nl! (Code: ' + userToken + ')';
             }).then((description: string) => {
                 return {
                     name: value,
@@ -132,7 +132,12 @@ let sendCurrentImages = function (socket: WebSocket) {
                 }
             })
         })).then(values => {
-            socket.emit('images', values.sort((image1, image2) => image1.name.localeCompare(image2.name)));
+            socket.emit('images', values.sort((image1, image2) => {
+                if(image1.name.length === image2.name.length){
+                    return image1.name.localeCompare(image2.name)
+                }
+                return image1.name.length - image2.name.length;
+            }));
         });
     }).catch((error: ErrnoException) => {
         console.error('Could not sent the current images', error);
