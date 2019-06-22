@@ -2,7 +2,6 @@ import * as express from 'express';
 import * as http from 'http';
 import * as WebSocket from 'ws';
 // @ts-ignore
-import piexif from 'piexifjs'
 import ErrnoException = NodeJS.ErrnoException;
 
 const fs = require('fs-extra');
@@ -17,14 +16,33 @@ const options = {quality: 65};
 
 const imageExtensions = ['.png', '.jpg', '.jpeg'];
 let counter = 0;
-const token = process.env.token;
+const userToken = process.env.userToken;
+const adminToken = process.env.adminToken;
+const validTokens = [userToken, adminToken];
+console.log('valid userToken: ', userToken);
 
 ws.on('connection', (socket: WebSocket) => {
     console.log('Socket connected.');
+    registerLoginCallback(socket);
     registerOnDeleteHandle(socket);
     registerFileUploadHandle(socket);
-    sendCurrentImages(socket);
 });
+
+let registerLoginCallback = function (socket: WebSocket) {
+    socket.on('login', (token) => {
+        let level = 0;
+        if (token === adminToken) {
+            level = 2;
+        } else if (token === userToken) {
+            level = 1;
+        }
+        if (level > 0) {
+            sendCurrentImages(socket);
+        }
+        console.log('sending back level for login', level);
+        socket.emit('loginCallback', level);
+    })
+};
 
 let registerFileUploadHandle = function (socket: WebSocket) {
     const uploader = new SocketIOFile(socket, {
@@ -43,8 +61,13 @@ let registerFileUploadHandle = function (socket: WebSocket) {
         }
     });
     uploader.on('start', (fileInfo: any) => {
-        console.log('Start uploading');
-        console.log(fileInfo);
+        // todo should probably move this validation more forward in the chain
+        if (validTokens.indexOf(fileInfo.data.token) < 0) {
+            (socket as any).conn.close();
+        } else {
+            console.log('Start uploading');
+            console.log(fileInfo);
+        }
     });
     uploader.on('stream', (fileInfo: any) => {
         console.log(`${fileInfo.wrote} / ${fileInfo.size} byte(s)`);
@@ -75,11 +98,9 @@ let registerFileUploadHandle = function (socket: WebSocket) {
 
 let registerOnDeleteHandle = function (socket: WebSocket) {
     socket.on('delete', (data) => {
-        // todo store passwords in database, hashed?
-        if (data.token === token) {
+        if (data.token === adminToken) {
             console.log('deleting: ' + data.image);
             let fullPath = 'data/processed/' + data.image;
-            // todo use promise chaining
             fs.exists(fullPath).then((exists: boolean) => {
                 if (exists) {
                     return fs.rename(fullPath, 'data/removed/' + data.image).then(() => {
@@ -113,29 +134,8 @@ let sendCurrentImages = function (socket: WebSocket) {
         })).then(values => {
             socket.emit('images', values.sort((image1, image2) => image1.name.localeCompare(image2.name)));
         });
-        // images.forEach(file => {
-        //     let descriptionPath = 'data/processed/' + file + '_desc.txt';
-        //     fs.exists(descriptionPath).then((exists: boolean) => {
-        //         return exists ? fs.readFile(descriptionPath, 'utf8') : '';
-        //     }).then((description: string) => {
-        //         socket.emit('image',)
-        //     });
-        // });
     }).catch((error: ErrnoException) => {
         console.error('Could not sent the current images', error);
-    });
-};
-
-// function to encode file data to base64 encoded string
-let base64_encode_rotate = function (file: string): Promise<string> {
-    return new Promise(function (resolve, reject) {
-        fs.readFile('data/incoming/' + file, (err: any, data: Buffer) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(data.toString('base64'))
-            }
-        });
     });
 };
 
@@ -156,16 +156,6 @@ let rotate = function (file: string): Promise<Buffer> {
         });
     });
 };
-
-function deleteThumbnailFromExif(imageBuffer: Buffer) {
-    const imageString = imageBuffer.toString('binary');
-    const exifObj = piexif.load(imageString);
-    delete exifObj.thumbnail;
-    delete exifObj['1st'];
-    const exifBytes = piexif.dump(exifObj);
-    const newImageString = piexif.insert(exifBytes, imageString);
-    return Buffer.from(newImageString, 'binary')
-}
 
 app.use('/images', express.static('data/processed'));
 app.use('/other', express.static('data/other'));

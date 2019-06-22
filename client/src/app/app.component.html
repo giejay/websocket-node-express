@@ -1,43 +1,68 @@
-<div *ngIf="uploadingImage && uploadingImage.content.length == 0" style="margin-top: 20px;">
-  Bezig met het verwerken van de afbeelding
-</div>
-<input type="file" ngModel (change)="getFiles($event)" accept="image/*" style="display: none;" #file>
-<div class="container h-100" style="margin-top: 20px;" *ngIf="uploadingImage && uploadingImage.content.length > 0 && !uploadingImage.isUploading">
-  <div class="row">
-    <div class="col-lg-12">
-      <button type="button" class="btn btn-warning" (click)="exitUpload()">Terug</button>
-      <button type="button" class="btn btn-warning float-right" (click)="file.click()">Nieuwe foto</button>
+<!-- todo move to login component -->
+<div class="wrapper fadeInDown container" *ngIf="!user.loggedIn()">
+  <div id="formContent" style="align-content: center">
+
+    <!-- Icon -->
+    <div class="fadeIn first">
+      <img style="max-width: 100px; padding:10px;" src="/assets/img/user.png" id="icon" alt="User Icon"/>
+    </div>
+
+    <!-- Login Form -->
+    <form>
+      <input type="text" id="password" class="fadeIn third" name="login" placeholder="Code" [(ngModel)]="user.token">
+      <input type="submit" class="fadeIn fourth" value="Log In" (click)="login()">
+    </form>
+
+    <div *ngIf="user.state === 0" style="padding-bottom: 10px">
+      Het wachtwoord is niet juist
     </div>
   </div>
-  <div class="grid12-6">
-    <img class="img-fluid rounded  border border-dark mx-auto d-block" [src]="uploadingImage.content">
-    <input [ngModel]="uploadingImage.description" (ngModelChange)="uploadingImage.description = $event"
-           [ngStyle]="{'max-width.px': uploadingImage.width}"
-           type="text" style="outline-width: 0;" class="inner_box " placeholder="Voeg een text toe"/>
-  </div>
-  <button type="button" [ngStyle]="{'width.px': uploadingImage.width}" class="btn btn-warning mx-auto" (click)="upload()">Verstuur!</button>
 </div>
-<div class="container h-100" *ngIf="!uploadingImage || uploadingImage.isUploading">
-  <ngx-gallery #gallery [options]="galleryOptions" [images]="getImages()" (previewChange)="previewChanged($event)"
-               (previewClose)="stopSlideShow()"></ngx-gallery>
 
-
-  <div class="row h-100">
-    <div class="col-md-3 text-center col-6 col-sm-6 my-auto">
-      <img *ngIf="!uploadingImage || !uploadingImage.isUploading" class="img-fluid rounded mx-auto d-block"
-           (click)="file.click()"
-           style="max-height: 300px; padding: 40px;" src="https://image.flaticon.com/icons/png/512/3/3901.png">
-      <div class="row justify-content-center align-self-center" *ngIf="uploadingImage && uploadingImage.isUploading">
-        Uploading: {{uploadingImage.uploadingPercentage}} %
+<div *ngIf="user.loggedIn()">
+  <div *ngIf="uploadingImage && uploadingImage.content.length == 0" style="margin-top: 20px;">
+    Bezig met het verwerken van de afbeelding
+  </div>
+  <input type="file" ngModel (change)="getFiles($event)" accept="image/*" style="display: none;" #file>
+  <div class="container h-100" style="margin-top: 20px;"
+       *ngIf="uploadingImage && uploadingImage.content.length > 0 && !uploadingImage.isUploading">
+    <div class="row">
+      <div class="col-lg-12">
+        <button type="button" class="btn btn-warning" (click)="exitUpload()">Terug</button>
+        <button type="button" class="btn btn-warning float-right" (click)="file.click()">Nieuwe foto</button>
       </div>
     </div>
-    <div class="col-md-3 text-center col-6 col-sm-6 content" *ngFor="let image of getImages(); let i = index">
-      <div class="wrapper mx-auto d-block">
-        <img class="img-fluid rounded  border border-dark"
-             [defaultImage]="defaultImage" [lazyLoad]="image.big" [offset]="offset"
-             style="max-height: 300px; margin-bottom: 10px;"
-             (click)="open(i)">
-        <span *ngIf="token" class="close" (click)="delete(image.label)"></span>
+    <div class="grid12-6">
+      <img class="img-fluid rounded  border border-dark mx-auto d-block" [src]="uploadingImage.content">
+      <input [ngModel]="uploadingImage.description" (ngModelChange)="uploadingImage.description = $event"
+             [ngStyle]="{'max-width.px': uploadingImage.width}"
+             type="text" style="outline-width: 0;" class="inner_box " placeholder="Voeg een text toe"/>
+    </div>
+    <button type="button" [ngStyle]="{'width.px': uploadingImage.width}" class="btn btn-warning mx-auto"
+            (click)="upload()">Verstuur!
+    </button>
+  </div>
+  <div class="container h-100" *ngIf="!uploadingImage || uploadingImage.isUploading">
+    <ngx-gallery #gallery [options]="galleryOptions" [images]="getImages()" (previewChange)="previewChanged($event)"
+                 (previewClose)="stopSlideShow()"></ngx-gallery>
+
+    <div class="row h-100">
+      <div class="col-md-3 text-center col-6 col-sm-6 my-auto">
+        <img *ngIf="!uploadingImage || !uploadingImage.isUploading" class="img-fluid rounded mx-auto d-block"
+             (click)="file.click()"
+             style="max-height: 300px; padding: 40px;" src="https://image.flaticon.com/icons/png/512/3/3901.png">
+        <div class="row justify-content-center align-self-center" *ngIf="uploadingImage && uploadingImage.isUploading">
+          Uploading: {{uploadingImage.uploadingPercentage}} %
+        </div>
+      </div>
+      <div class="col-md-3 text-center col-6 col-sm-6 content" *ngFor="let image of getImages(); let i = index">
+        <div class="img-wrapper mx-auto d-block">
+          <img class="img-fluid rounded  border border-dark"
+               [defaultImage]="defaultImage" [lazyLoad]="image.big" [offset]="offset"
+               style="max-height: 300px; margin-bottom: 10px;"
+               (click)="open(i)">
+          <span *ngIf="user.state === 2" class="close" (click)="delete(image.label)"></span>
+        </div>
       </div>
     </div>
   </div>

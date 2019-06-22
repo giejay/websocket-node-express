@@ -2,7 +2,6 @@ import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import {INgxGalleryImage, NgxGalleryComponent, NgxGalleryImage, NgxGalleryOptions, NgxGalleryOrder} from 'ngx-gallery';
 import {Socket} from 'ngx-socket-io';
 import SocketIOFileClient from 'socket.io-file-client';
-import {ActivatedRoute} from '@angular/router';
 
 declare var loadImage: any;
 
@@ -15,6 +14,17 @@ class UploadImage {
               public orientation: any = {},
               public fileSize: number = 0,
               public width: number = 0) {
+  }
+}
+
+class User {
+  constructor(public token?: string,
+              public state: number = -1) {
+
+  }
+
+  loggedIn(): boolean {
+    return this.state > 0;
   }
 }
 
@@ -35,21 +45,25 @@ export class AppComponent implements OnInit {
   private imageShownTimeout;
   private uploader: SocketIOFileClient;
   private imagesShown: Array<string> = [];
-  public token: string;
+  public user: User;
   public uploadingImage: UploadImage;
   public defaultImage = 'assets/img/default.jpg';
   public offset = 100;
   public positionBeforeMovingToNewPhoto = -1;
   private readonly apiBaseUri: string | undefined;
 
-  constructor(private imageSocket: Socket, private route: ActivatedRoute) {
-    this.route.queryParams.subscribe(params => {
-      this.token = params['token'];
-    });
+  constructor(private imageSocket: Socket) {
+    this.user = new User();
+    const userToken = window.localStorage.getItem('user-token');
+    if (userToken) {
+      this.user.token = userToken;
+      this.login();
+    }
     this.uploader = new SocketIOFileClient(imageSocket);
     this.apiBaseUri = imageSocket.ioSocket.io.uri;
 
-    this.registerIncomingImageCallback(imageSocket);
+    this.registerLoginEvent();
+    this.registerIncomingImageCallback();
     this.registerDeleteImageCallback();
     this.registerUploaderCallbacks();
   }
@@ -86,8 +100,17 @@ export class AppComponent implements OnInit {
     this.galleryOptions = [galleryOption];
   }
 
+  login() {
+    this.imageSocket.emit('login', this.user.token);
+  }
+
   upload() {
-    this.uploader.upload(this.uploadingImage.file, {data: {description: this.uploadingImage.description}});
+    this.uploader.upload(this.uploadingImage.file, {
+      data: {
+        description: this.uploadingImage.description,
+        token: this.user.token
+      }
+    });
   }
 
   getFiles($event): void {
@@ -109,13 +132,12 @@ export class AppComponent implements OnInit {
   }
 
   delete(imageName: string): void {
-    this.imageSocket.emit('delete', {image: imageName, token: this.token});
+    this.imageSocket.emit('delete', {image: imageName, token: this.user.token});
   }
 
   stopSlideShow() {
     clearInterval(this.slideShowInterval);
     delete this.slideShowInterval;
-    this.imagesShown = [];
     const ngxGalleryOption = this.galleryOptions[0];
     if (ngxGalleryOption && ngxGalleryOption.actions) {
       ngxGalleryOption.actions[0].icon = 'fa fa-play-circle';
@@ -130,7 +152,7 @@ export class AppComponent implements OnInit {
       const position = this.positionBeforeMovingToNewPhoto;
       // reset it again so it wont move to this position indefinitely
       this.positionBeforeMovingToNewPhoto = -1;
-      // position is stored in a constant first and reset first so previewChanged method wont "stackoverflow"
+      // position is stored in a constant and reset first so previewChanged method wont "stackoverflow"
       this.gallery.preview.showAtIndex(position);
     }
     const image = this.getImages()[$event.index];
@@ -146,8 +168,17 @@ export class AppComponent implements OnInit {
     delete this.uploadingImage;
   }
 
-  private registerIncomingImageCallback(imageSocket: Socket) {
-    imageSocket.on('image', (image) => {
+  private registerLoginEvent() {
+    this.imageSocket.on('loginCallback', (authState) => {
+      this.user.state = authState;
+      if (this.user.state > 0) {
+        window.localStorage.setItem('user-token', this.user.token as string);
+      }
+    });
+  }
+
+  private registerIncomingImageCallback() {
+    this.imageSocket.on('image', (image) => {
       console.log('receiving image!', image);
       this.addPhoto(image);
       if (this.gallery.preview && this.allPhotosShown()) {
@@ -160,8 +191,8 @@ export class AppComponent implements OnInit {
       }
     });
 
-    imageSocket.on('images', (images) => {
-      console.log('recieving initial images', images);
+    this.imageSocket.on('images', (images) => {
+      console.log('receiving initial images', images);
       images.forEach(img => this.addPhoto(img));
     });
   }
@@ -180,7 +211,7 @@ export class AppComponent implements OnInit {
 
   private allPhotosShown() {
     const imageCount = Object.keys(this.galleryImages).length;
-    return this.imagesShown.length && this.imagesShown.length === imageCount - 1
+    return this.imagesShown.length && this.imagesShown.length === imageCount - 1;
   }
 
   private registerDeleteImageCallback() {
