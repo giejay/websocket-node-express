@@ -17,8 +17,8 @@ import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import {RouterModule} from '@angular/router';
 import { LazyLoadImageModule } from 'ng-lazyload-image';
 // todo move this to constants somehow and create a proxy for it /websocket or something
-const config: SocketIoConfig = {url: 'http://localhost:3000', options: {}};
-// const config: SocketIoConfig = {url: 'http://transip.giejay.nl:3000', options: {}};
+// const config: SocketIoConfig = {url: 'http://localhost:3000', options: {}};
+const config: SocketIoConfig = {url: '', options: {}};
 
 @NgModule({
   declarations: [

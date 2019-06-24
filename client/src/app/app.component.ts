@@ -55,7 +55,6 @@ export class AppComponent implements OnInit {
   public defaultImage = 'assets/img/default.jpg';
   public offset = 100;
   public positionBeforeMovingToNewPhoto = -1;
-  private readonly apiBaseUri: string | undefined;
   public reloading: boolean;
 
   constructor(private imageSocket: Socket) {
@@ -66,7 +65,6 @@ export class AppComponent implements OnInit {
       this.login();
     }
     this.uploader = new SocketIOFileClient(imageSocket);
-    this.apiBaseUri = imageSocket.ioSocket.io.uri;
 
     this.registerLoginEvent();
     this.registerIncomingImageCallback();
@@ -210,7 +208,7 @@ export class AppComponent implements OnInit {
       return;
     }
     this.galleryImages[image.name] = new NgxGalleryImage({
-      big: this.apiBaseUri + '/images/' + image.name,
+      big: 'images/' + image.name,
       label: image.name,
       description: image.description
     });

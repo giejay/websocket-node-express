@@ -18,14 +18,15 @@ let counter = 0;
 const userToken = process.env.userToken;
 const adminToken = process.env.adminToken;
 const validTokens = [userToken, adminToken];
+const websiteUrl = process.env.websiteUrl;
 console.log('valid userToken: ', userToken);
+const defaultDescription = 'Upload je foto op ' + (websiteUrl || 'de website') + '! (Code: ' + userToken + ')';
 
 let readCurrentImages = function () {
     const imageFiles: string[] = fs.readdirSync(processedDir).filter((file: string) => imageExtensions.indexOf(file.substring(file.lastIndexOf("."))) >= 0);
     return imageFiles.map(value => {
         let descriptionPath = processedDir + '/' + value + '_desc.txt';
-        const description = fs.existsSync(descriptionPath) ? fs.readFileSync(descriptionPath, 'utf8') :
-            'Upload je foto op www.married.giejay.nl! (Code: ' + userToken + ')';
+        const description = fs.existsSync(descriptionPath) ? fs.readFileSync(descriptionPath, 'utf8') : defaultDescription;
         return {
             name: value,
             description: description
@@ -96,10 +97,11 @@ let registerFileUploadHandle = function (socket: WebSocket) {
         rotate(fileInfo.uploadDir).then(buffer => {
             fs.writeFile('data/processed/' + fileInfo.name, buffer).then(() => {
                 if (!fileInfo.data.description) {
-                    sendImages(fileInfo);
+                    sendImages(fileInfo.name, defaultDescription);
                 } else {
-                    fs.writeFile('data/processed/' + fileInfo.name + '_desc.txt', fileInfo.data.description.substr(0, 70)).then(() => {
-                        sendImages(fileInfo);
+                    let description = fileInfo.data.description.substr(0, 70);
+                    fs.writeFile('data/processed/' + fileInfo.name + '_desc.txt', description).then(() => {
+                        sendImages(fileInfo.name, description);
                     });
                 }
             }).catch((err: any) => {
@@ -115,8 +117,8 @@ let registerFileUploadHandle = function (socket: WebSocket) {
     });
 };
 
-function sendImages(fileInfo: any) {
-    const image = {name: fileInfo.name, description: fileInfo.data.description};
+function sendImages(name: string, description: string) {
+    const image = {name: name, description: description};
     currentImages.push(image);
     // Send the image to all connected clients
     ws.clients().emit('image', image);
