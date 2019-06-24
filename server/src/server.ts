@@ -1,8 +1,6 @@
 import * as express from 'express';
 import * as http from 'http';
 import * as WebSocket from 'ws';
-// @ts-ignore
-import ErrnoException = NodeJS.ErrnoException;
 
 const fs = require('fs-extra');
 const app = express();
@@ -15,11 +13,29 @@ const jo = require('jpeg-autorotate');
 const options = {quality: 65};
 
 const imageExtensions = ['.png', '.jpg', '.jpeg'];
+const processedDir = 'data/processed';
 let counter = 0;
 const userToken = process.env.userToken;
 const adminToken = process.env.adminToken;
 const validTokens = [userToken, adminToken];
 console.log('valid userToken: ', userToken);
+
+let readCurrentImages = function () {
+    const imageFiles: string[] = fs.readdirSync(processedDir).filter((file: string) => imageExtensions.indexOf(file.substring(file.lastIndexOf("."))) >= 0);
+    return imageFiles.map(value => {
+        let descriptionPath = processedDir + '/' + value + '_desc.txt';
+        const description = fs.existsSync(descriptionPath) ? fs.readFileSync(descriptionPath, 'utf8') :
+            'Upload je foto op www.married.giejay.nl! (Code: ' + userToken + ')';
+        return {
+            name: value,
+            description: description
+        }
+    });
+};
+
+let currentImages: { name: string; description: string }[] = readCurrentImages();
+
+console.log('Current images', currentImages);
 
 ws.on('connection', (socket: WebSocket) => {
     console.log('Socket connected.');
@@ -37,7 +53,8 @@ let registerLoginCallback = function (socket: WebSocket) {
             level = 1;
         }
         if (level > 0) {
-            sendCurrentImages(socket);
+            // sent images to authenticated user
+            socket.emit('images', sortImages(currentImages));
         }
         console.log('sending back level for login', level);
         socket.emit('loginCallback', level);
@@ -77,11 +94,12 @@ let registerFileUploadHandle = function (socket: WebSocket) {
         console.log('Upload Complete.', fileInfo);
 
         rotate(fileInfo.uploadDir).then(buffer => {
-
             fs.writeFile('data/processed/' + fileInfo.name, buffer).then(() => {
                 fs.writeFile('data/processed/' + fileInfo.name + '_desc.txt', fileInfo.data.description).then(() => {
+                    const image = {name: fileInfo.name, description: fileInfo.data.description};
+                    currentImages.push(image);
                     // Send the image to all connected clients
-                    ws.clients().emit('image', {name: fileInfo.name, description: fileInfo.data.description})
+                    ws.clients().emit('image', image);
                 });
             }).catch((err: any) => {
                 console.error('Could not write file to processed folder', err);
@@ -104,7 +122,8 @@ let registerOnDeleteHandle = function (socket: WebSocket) {
             fs.exists(fullPath).then((exists: boolean) => {
                 if (exists) {
                     return fs.rename(fullPath, 'data/removed/' + data.image).then(() => {
-                        return ws.clients().emit('imageDeleted', {name: data.image});
+                        currentImages = currentImages.filter(image => image.name !== data.image);
+                        ws.clients().emit('imageDeleted', {name: data.image});
                     });
                 } else {
                     console.error('Full path does not exist: ' + fullPath);
@@ -116,33 +135,14 @@ let registerOnDeleteHandle = function (socket: WebSocket) {
     });
 };
 
-let sendCurrentImages = function (socket: WebSocket) {
-    // read all current images on disk and sent them to client
-    fs.readdir('data/processed').then((files: Array<string>) => {
-        let images = files.filter(i => imageExtensions.indexOf(i.substring(i.lastIndexOf("."))) >= 0);
-        console.log('Sending images: ', images);
-        Promise.all(images.map(value => {
-            let descriptionPath = 'data/processed/' + value + '_desc.txt';
-            return fs.exists(descriptionPath).then((exists: boolean) => {
-                return exists ? fs.readFile(descriptionPath, 'utf8') : 'Upload je foto op www.married.giejay.nl! (Code: ' + userToken + ')';
-            }).then((description: string) => {
-                return {
-                    name: value,
-                    description: description
-                }
-            })
-        })).then(values => {
-            socket.emit('images', values.sort((image1, image2) => {
-                if(image1.name.length === image2.name.length){
-                    return image1.name.localeCompare(image2.name)
-                }
-                return image1.name.length - image2.name.length;
-            }));
-        });
-    }).catch((error: ErrnoException) => {
-        console.error('Could not sent the current images', error);
-    });
-};
+function sortImages(images: { name: string; description: string }[]) {
+    return images.sort((image1, image2) => {
+        if (image1.name.length === image2.name.length) {
+            return image1.name.localeCompare(image2.name)
+        }
+        return image1.name.length - image2.name.length;
+    })
+}
 
 let rotate = function (file: string): Promise<Buffer> {
     return new Promise(function (resolve) {
