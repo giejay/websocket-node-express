@@ -28,6 +28,9 @@ app-root {
 
 .ngx-gallery-preview-text[_ngcontent-c4] {
   font-size: 30px !important;
+  @media (max-width: 991.98px) {
+    font-size: 20px !important;
+  }
 }
 
 .rotate-180{

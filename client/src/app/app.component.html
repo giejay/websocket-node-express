@@ -36,7 +36,7 @@
       <img class="img-fluid rounded  border border-dark mx-auto d-block" [src]="uploadingImage.content">
       <input [ngModel]="uploadingImage.description" (ngModelChange)="uploadingImage.description = $event"
              [ngStyle]="{'max-width.px': uploadingImage.width}"
-             type="text" style="outline-width: 0;" class="inner_box " placeholder="Voeg een text toe"/>
+             type="text" style="outline-width: 0;" class="inner_box" maxlength="70" placeholder="Voeg een text toe"/>
     </div>
     <button type="button" [ngStyle]="{'width.px': uploadingImage.width}" class="btn btn-warning mx-auto"
             (click)="upload()">Verstuur!
@@ -50,7 +50,7 @@
       <div class="col-md-3 text-center col-6 col-sm-6 my-auto">
         <img *ngIf="!uploadingImage || !uploadingImage.isUploading" class="img-fluid rounded mx-auto d-block"
              (click)="file.click()"
-             style="max-height: 300px; padding: 40px;" src="https://image.flaticon.com/icons/png/512/3/3901.png">
+             style="max-height: 300px; padding: 40px;" src="assets/img/upload.png">
         <div class="row justify-content-center align-self-center" *ngIf="uploadingImage && uploadingImage.isUploading">
           Uploading: {{uploadingImage.uploadingPercentage}} %
         </div>

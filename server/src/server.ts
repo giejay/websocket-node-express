@@ -95,12 +95,13 @@ let registerFileUploadHandle = function (socket: WebSocket) {
 
         rotate(fileInfo.uploadDir).then(buffer => {
             fs.writeFile('data/processed/' + fileInfo.name, buffer).then(() => {
-                fs.writeFile('data/processed/' + fileInfo.name + '_desc.txt', fileInfo.data.description).then(() => {
-                    const image = {name: fileInfo.name, description: fileInfo.data.description};
-                    currentImages.push(image);
-                    // Send the image to all connected clients
-                    ws.clients().emit('image', image);
-                });
+                if (!fileInfo.data.description) {
+                    sendImages(fileInfo);
+                } else {
+                    fs.writeFile('data/processed/' + fileInfo.name + '_desc.txt', fileInfo.data.description.substr(0, 70)).then(() => {
+                        sendImages(fileInfo);
+                    });
+                }
             }).catch((err: any) => {
                 console.error('Could not write file to processed folder', err);
             });
@@ -113,6 +114,13 @@ let registerFileUploadHandle = function (socket: WebSocket) {
         console.log('Aborted: ', fileInfo);
     });
 };
+
+function sendImages(fileInfo: any) {
+    const image = {name: fileInfo.name, description: fileInfo.data.description};
+    currentImages.push(image);
+    // Send the image to all connected clients
+    ws.clients().emit('image', image);
+}
 
 let registerOnDeleteHandle = function (socket: WebSocket) {
     socket.on('delete', (data) => {

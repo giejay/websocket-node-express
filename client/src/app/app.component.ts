@@ -28,6 +28,11 @@ class User {
   }
 }
 
+class Image {
+  constructor(public name: string, public description: string) {
+  }
+}
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -115,13 +120,15 @@ export class AppComponent implements OnInit {
   }
 
   getFiles($event): void {
-    this.uploadingImage = new UploadImage($event.target.files, '', '');
-    this.parseImage($event.target.files[0]).then((image: HTMLCanvasElement) => {
-      this.uploadingImage.width = Math.min(window.innerWidth - 30, image.width);
-      this.uploadingImage.content = image.toDataURL();
-    });
-    // clear input
-    delete this.file.nativeElement.value;
+    if ($event.target.files.length) {
+      this.uploadingImage = new UploadImage($event.target.files, '', '');
+      this.parseImage($event.target.files[0]).then((image: HTMLCanvasElement) => {
+        this.uploadingImage.width = Math.min(window.innerWidth - 30, image.width);
+        this.uploadingImage.content = image.toDataURL();
+      });
+      // clear input
+      delete this.file.nativeElement.value;
+    }
   }
 
   getImages() {
@@ -146,7 +153,6 @@ export class AppComponent implements OnInit {
   }
 
   previewChanged($event) {
-    console.log('preview changed');
     clearTimeout(this.imageShownTimeout);
     if ($event.index === 0 && this.positionBeforeMovingToNewPhoto !== -1) {
       // jump back to last position when all the new photos are shown and we are at the beginning again
@@ -192,13 +198,13 @@ export class AppComponent implements OnInit {
       }
     });
 
-    this.imageSocket.on('images', (images) => {
+    this.imageSocket.on('images', (images: Image[]) => {
       console.log('receiving initial images', images);
       images.forEach(img => this.addPhoto(img));
     });
   }
 
-  private addPhoto(image) {
+  private addPhoto(image: Image) {
     if (this.galleryImages[image.name]) {
       console.log('Already processed the image: ' + image.name);
       return;
