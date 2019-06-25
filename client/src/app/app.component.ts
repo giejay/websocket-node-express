@@ -57,6 +57,7 @@ export class AppComponent implements OnInit {
   public offset = 100;
   public positionBeforeMovingToNewPhoto = -1;
   public reloading: boolean;
+  private currentPreviewImage: INgxGalleryImage;
 
   constructor(private imageSocket: Socket, private route: ActivatedRoute) {
     this.route.queryParams.subscribe(params => {
@@ -163,11 +164,11 @@ export class AppComponent implements OnInit {
       // position is stored in a constant and reset first so previewChanged method wont "stackoverflow"
       this.gallery.preview.showAtIndex(position);
     }
-    const image = this.getImages()[$event.index];
-    if (this.imagesShown.indexOf(image.label as string) < 0) {
+    this.currentPreviewImage = this.getImages()[$event.index];
+    if (this.imagesShown.indexOf(this.currentPreviewImage.label as string) < 0) {
       this.imageShownTimeout = setTimeout(() => {
         // only push it after the photo has been shown for at least x seconds to prevent new photos overlapping each other very fast
-        this.imagesShown.push(image.label as string);
+        this.imagesShown.push(this.currentPreviewImage as string);
       }, this.slideShowIntervalMillis - 1000);
     }
   }
@@ -238,7 +239,7 @@ export class AppComponent implements OnInit {
       if (this.gallery.preview.previewImage) {
         // rewrite images and index so we wont have out of bounds errors when slideshowing
         this.gallery.preview.images = Object.keys(this.galleryImages).map(img => this.galleryImages[img].big) as string[];
-        const selectedImage = this.getImages().map(img => img.big).indexOf(this.gallery.preview.previewImage.nativeElement.src);
+        const selectedImage = (this.gallery.preview.images as string[]).indexOf(this.currentPreviewImage.big as string);
         this.gallery.preview.index = selectedImage !== -1 ? selectedImage : 0;
       }
     });

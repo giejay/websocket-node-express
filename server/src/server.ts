@@ -23,7 +23,7 @@ console.log('valid userToken: ', userToken);
 const defaultDescription = 'Upload je foto op ' + (websiteUrl || 'de website') + '! (Code: ' + userToken + ')';
 
 let readCurrentImages = function () {
-    const imageFiles: string[] = fs.readdirSync(processedDir).filter((file: string) => imageExtensions.indexOf(file.substring(file.lastIndexOf("."))) >= 0);
+    const imageFiles: string[] = fs.readdirSync(processedDir).filter((file: string) => imageExtensions.indexOf(file.substring(file.lastIndexOf(".")).toLowerCase()) >= 0);
     return imageFiles.map(value => {
         let descriptionPath = processedDir + '/' + value + '_desc.txt';
         const description = fs.existsSync(descriptionPath) ? fs.readFileSync(descriptionPath, 'utf8') : defaultDescription;
