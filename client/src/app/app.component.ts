@@ -2,6 +2,7 @@ import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import {INgxGalleryImage, NgxGalleryComponent, NgxGalleryImage, NgxGalleryOptions, NgxGalleryOrder} from 'ngx-gallery';
 import {Socket} from 'ngx-socket-io';
 import SocketIOFileClient from 'socket.io-file-client';
+import {ActivatedRoute} from '@angular/router';
 
 declare var loadImage: any;
 
@@ -46,7 +47,7 @@ export class AppComponent implements OnInit {
   @ViewChild('file') private file: ElementRef;
 
   public slideShowInterval: any;
-  private slideShowIntervalMillis = 5000;
+  private slideShowIntervalMillis = 8000;
   private imageShownTimeout;
   private uploader: SocketIOFileClient;
   private imagesShown: Array<string> = [];
@@ -57,15 +58,17 @@ export class AppComponent implements OnInit {
   public positionBeforeMovingToNewPhoto = -1;
   public reloading: boolean;
 
-  constructor(private imageSocket: Socket) {
+  constructor(private imageSocket: Socket, private route: ActivatedRoute) {
+    this.route.queryParams.subscribe(params => {
+      const interval: string = params['interval'];
+      if (interval) {
+        this.slideShowIntervalMillis = parseInt(interval, 0) * 1000;
+      }
+    });
     this.user = new User();
-    const userToken = window.localStorage.getItem('user-token');
-    if (userToken) {
-      this.user.token = userToken;
-      this.login();
-    }
     this.uploader = new SocketIOFileClient(imageSocket);
 
+    this.loginUserFromStorage();
     this.registerLoginEvent();
     this.registerIncomingImageCallback();
     this.registerDeleteImageCallback();
@@ -186,13 +189,17 @@ export class AppComponent implements OnInit {
     this.imageSocket.on('image', (image) => {
       console.log('receiving image!', image);
       this.addPhoto(image);
+      const imagePreLoadPromise = this.preLoad('images/' + image.name);
       if (this.gallery.preview && this.allPhotosShown()) {
-        // all photos have been shown already, jump to the last!
-        // save current position to restore if all new photos also have been shown
-        this.positionBeforeMovingToNewPhoto = this.gallery.preview.index;
-        // Reset the slideshow so it wont show it for less than 5 seconds
-        this.slideShow();
-        this.gallery.preview.showAtIndex(Object.keys(this.galleryImages).length - 1);
+        // first make sure the image is loaded before showing it or else it will be a spinner for half of the time its showing
+        imagePreLoadPromise.then(() => {
+          // all photos have been shown already, jump to the last!
+          // save current position to restore if all new photos also have been shown
+          this.positionBeforeMovingToNewPhoto = this.gallery.preview.index;
+          // Reset the slideshow so it wont show it for less than 5 seconds
+          this.slideShow();
+          this.gallery.preview.showAtIndex(Object.keys(this.galleryImages).length - 1);
+        });
       }
     });
 
@@ -288,5 +295,22 @@ export class AppComponent implements OnInit {
     });
   }
 
+  private loginUserFromStorage() {
+    const userToken = window.localStorage.getItem('user-token');
+    if (userToken) {
+      this.user.token = userToken;
+      this.login();
+    }
+  }
+
+  private preLoad(url: string): Promise<any> {
+    return new Promise((resolve) => {
+      const img = document.createElement('img');
+      img.src = url;
+      img.onload = () => {
+        resolve();
+      };
+    });
+  }
 
 }
