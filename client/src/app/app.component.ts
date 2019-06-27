@@ -58,6 +58,7 @@ export class AppComponent implements OnInit {
   public positionBeforeMovingToNewPhoto = -1;
   public reloading: boolean;
   private currentPreviewImage: INgxGalleryImage;
+  private onlyShowNewPhotos: boolean;
 
   constructor(private imageSocket: Socket, private route: ActivatedRoute) {
     this.route.queryParams.subscribe(params => {
@@ -65,6 +66,7 @@ export class AppComponent implements OnInit {
       if (interval) {
         this.slideShowIntervalMillis = parseInt(interval, 0) * 1000;
       }
+      this.onlyShowNewPhotos = params['onlyNew'] || false;
     });
     this.user = new User();
     this.uploader = new SocketIOFileClient(imageSocket);
@@ -168,7 +170,7 @@ export class AppComponent implements OnInit {
     if (this.imagesShown.indexOf(this.currentPreviewImage.label as string) < 0) {
       this.imageShownTimeout = setTimeout(() => {
         // only push it after the photo has been shown for at least x seconds to prevent new photos overlapping each other very fast
-        this.imagesShown.push(this.currentPreviewImage as string);
+        this.imagesShown.push(this.currentPreviewImage.label as string);
       }, this.slideShowIntervalMillis - 1000);
     }
   }
@@ -192,8 +194,10 @@ export class AppComponent implements OnInit {
       this.addPhoto(image);
       const imagePreLoadPromise = this.preLoad('images/' + image.name);
       if (this.gallery.preview && this.allPhotosShown()) {
+        console.log('All photos are shown, lets jump to the newly uploaded');
         // first make sure the image is loaded before showing it or else it will be a spinner for half of the time its showing
         imagePreLoadPromise.then(() => {
+          console.log('Done preloading image', image.name);
           // all photos have been shown already, jump to the last!
           // save current position to restore if all new photos also have been shown
           this.positionBeforeMovingToNewPhoto = this.gallery.preview.index;
@@ -211,6 +215,10 @@ export class AppComponent implements OnInit {
   }
 
   private addPhoto(image: Image) {
+    if (this.onlyShowNewPhotos && image.name.length <= 8) {
+      // default images are max 8 chars
+      return;
+    }
     if (this.galleryImages[image.name]) {
       console.log('Already processed the image: ' + image.name);
       return;
@@ -307,10 +315,10 @@ export class AppComponent implements OnInit {
   private preLoad(url: string): Promise<any> {
     return new Promise((resolve) => {
       const img = document.createElement('img');
-      img.src = url;
       img.onload = () => {
         resolve();
       };
+      img.src = url;
     });
   }
 
