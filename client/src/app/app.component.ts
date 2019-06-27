@@ -34,6 +34,10 @@ class Image {
   }
 }
 
+class EnrichedGalleryImage extends NgxGalleryImage {
+  public previewShown: boolean;
+}
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -41,7 +45,7 @@ class Image {
 })
 export class AppComponent implements OnInit {
   galleryOptions: NgxGalleryOptions[];
-  galleryImages: { [imageName: string]: INgxGalleryImage } = {};
+  galleryImages: { [imageName: string]: EnrichedGalleryImage } = {};
 
   @ViewChild('gallery') private gallery: NgxGalleryComponent;
   @ViewChild('file') private file: ElementRef;
@@ -50,14 +54,12 @@ export class AppComponent implements OnInit {
   private slideShowIntervalMillis = 8000;
   private imageShownTimeout;
   private uploader: SocketIOFileClient;
-  private imagesShown: Array<string> = [];
   public user: User;
   public uploadingImage: UploadImage;
   public defaultImage = 'assets/img/default.jpg';
-  public offset = 100;
+  public offset = 150;
   public positionBeforeMovingToNewPhoto = -1;
   public reloading: boolean;
-  private currentPreviewImage: INgxGalleryImage;
   private onlyShowNewPhotos: boolean;
 
   constructor(private imageSocket: Socket, private route: ActivatedRoute) {
@@ -166,11 +168,12 @@ export class AppComponent implements OnInit {
       // position is stored in a constant and reset first so previewChanged method wont "stackoverflow"
       this.gallery.preview.showAtIndex(position);
     }
-    this.currentPreviewImage = this.getImages()[$event.index];
-    if (this.imagesShown.indexOf(this.currentPreviewImage.label as string) < 0) {
+    const currentPreviewImage = this.getImages()[$event.index];
+    if (!currentPreviewImage.previewShown) {
       this.imageShownTimeout = setTimeout(() => {
-        // only push it after the photo has been shown for at least x seconds to prevent new photos overlapping each other very fast
-        this.imagesShown.push(this.currentPreviewImage.label as string);
+        console.log('setting preview to true for image', currentPreviewImage.big);
+        // only set it after the photo has been shown for at least x seconds to prevent new photos overlapping each other very fast
+        currentPreviewImage.previewShown = true;
       }, this.slideShowIntervalMillis - 1000);
     }
   }
@@ -191,20 +194,22 @@ export class AppComponent implements OnInit {
   private registerIncomingImageCallback() {
     this.imageSocket.on('image', (image) => {
       console.log('receiving image!', image);
-      this.addPhoto(image);
-      const imagePreLoadPromise = this.preLoad('images/' + image.name);
-      if (this.gallery.preview && this.allPhotosShown()) {
-        console.log('All photos are shown, lets jump to the newly uploaded');
-        // first make sure the image is loaded before showing it or else it will be a spinner for half of the time its showing
-        imagePreLoadPromise.then(() => {
-          console.log('Done preloading image', image.name);
-          // all photos have been shown already, jump to the last!
-          // save current position to restore if all new photos also have been shown
-          this.positionBeforeMovingToNewPhoto = this.gallery.preview.index;
-          // Reset the slideshow so it wont show it for less than 5 seconds
-          this.slideShow();
-          this.gallery.preview.showAtIndex(Object.keys(this.galleryImages).length - 1);
-        });
+      const allPhotosShown = this.allPhotosShown();
+      if (this.addPhoto(image)) {
+        const imagePreLoadPromise = this.preLoad('images/' + image.name);
+        if (this.slideShowInterval && this.gallery.preview && allPhotosShown) {
+          console.log('All photos are shown, lets jump to the newly uploaded');
+          // first make sure the image is loaded before showing it or else it will be a spinner for half of the time its showing
+          imagePreLoadPromise.then(() => {
+            console.log('Done preloading image', image.name);
+            // all photos have been shown already, jump to the last!
+            // save current position to restore if all new photos also have been shown
+            this.positionBeforeMovingToNewPhoto = this.gallery.preview.index;
+            // Reset the slideshow so it wont show it for less than x seconds
+            this.slideShow();
+            this.gallery.preview.showAtIndex(Object.keys(this.galleryImages).length - 1);
+          });
+        }
       }
     });
 
@@ -217,38 +222,40 @@ export class AppComponent implements OnInit {
   private addPhoto(image: Image) {
     if (this.onlyShowNewPhotos && image.name.length <= 8) {
       // default images are max 8 chars
-      return;
+      return false;
     }
     if (this.galleryImages[image.name]) {
       console.log('Already processed the image: ' + image.name);
-      return;
+      return false;
     }
-    this.galleryImages[image.name] = new NgxGalleryImage({
+    this.galleryImages[image.name] = new EnrichedGalleryImage({
       big: 'images/' + image.name,
       label: image.name,
       description: image.description
     });
+    return true;
   }
 
   private allPhotosShown() {
-    const imageCount = Object.keys(this.galleryImages).length;
-    return this.imagesShown.length && this.imagesShown.length === imageCount - 1;
+    const imagesNotShown = Object.keys(this.galleryImages).map(key => this.galleryImages[key]).filter(img => !img.previewShown).length;
+    console.log('Image not shown yet', imagesNotShown);
+    return imagesNotShown === 0;
   }
 
   private registerDeleteImageCallback() {
     this.imageSocket.on('imageDeleted', (image) => {
       if (this.slideShowInterval) {
-        // timing issue in deleting photos and playing
+        // timing issue in deleting photos and playing so reboot the slideshow
         this.slideShow();
       }
       delete this.galleryImages[image.name];
-      this.imagesShown.splice(this.imagesShown.indexOf(image.name), 1);
 
       if (this.gallery.preview.previewImage) {
         // rewrite images and index so we wont have out of bounds errors when slideshowing
         this.gallery.preview.images = Object.keys(this.galleryImages).map(img => this.galleryImages[img].big) as string[];
-        const selectedImage = (this.gallery.preview.images as string[]).indexOf(this.currentPreviewImage.big as string);
-        this.gallery.preview.index = selectedImage !== -1 ? selectedImage : 0;
+        if (this.gallery.preview.index !== 0) {
+          this.gallery.preview.index = this.gallery.preview.index - 1;
+        }
       }
     });
   }
